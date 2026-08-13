@@ -40,12 +40,14 @@ fun DashboardScreen(
     adminConfig: AdminConfigEntity?,
     strings: AppStrings,
     referredUsers: List<UserEntity> = emptyList(),
+    selectedCurrency: AppCurrency = AppCurrency.RWF,
     isLoading: Boolean = false,
     onOpenDepositModal: (String) -> Unit,
     onFastForward: () -> Unit,
     onViewAllTransactions: () -> Unit,
     onWithdrawClick: () -> Unit,
-    onFaqClick: () -> Unit = {}
+    onFaqClick: () -> Unit = {},
+    onWebDownloadClick: () -> Unit = {}
 ) {
     if (isLoading) {
         BentoDashboardSkeletonScreen()
@@ -123,6 +125,7 @@ fun DashboardScreen(
             BentoHeroBalanceCard(
                 availableBalance = available,
                 strings = strings,
+                selectedCurrency = selectedCurrency,
                 onOpenDepositModal = { onOpenDepositModal("B") }
             )
         }
@@ -136,7 +139,7 @@ fun DashboardScreen(
                 ) {
                     StatOverviewCard(
                         title = strings.lockedBalance,
-                        value = "%,d RWF".format(locked.toInt()),
+                        value = selectedCurrency.format(locked),
                         subtitle = strings.inActiveCycles,
                         icon = Icons.Default.Lock,
                         iconBgColor = BentoLockedBadgeBg,
@@ -146,7 +149,7 @@ fun DashboardScreen(
 
                     StatOverviewCard(
                         title = strings.totalEarned,
-                        value = "%,d RWF".format(earned.toInt()),
+                        value = selectedCurrency.format(earned),
                         subtitle = strings.allTimeEarnings,
                         icon = Icons.Default.TrendingUp,
                         iconBgColor = BentoEarnedBadgeBg,
@@ -171,7 +174,7 @@ fun DashboardScreen(
 
                     StatOverviewCard(
                         title = "Referral Bonus",
-                        value = "%,d RWF".format(referralBonus.toInt()),
+                        value = selectedCurrency.format(referralBonus),
                         subtitle = "Friend rewards",
                         icon = Icons.Default.CardGiftcard,
                         iconBgColor = GoldLight,
@@ -195,6 +198,7 @@ fun DashboardScreen(
                 ActiveCycleProgressCard(
                     cycle = activeCycle,
                     strings = strings,
+                    selectedCurrency = selectedCurrency,
                     onFastForward = onFastForward
                 )
             }
@@ -250,6 +254,55 @@ fun DashboardScreen(
                         }
                     }
                     Icon(Icons.Default.ChevronRight, contentDescription = null, tint = OrangeWarning)
+                }
+            }
+        }
+
+        // Web & Windows Desktop Portal Banner
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onWebDownloadClick() }
+                    .testTag("dashboard_web_download_banner"),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = NavyDark),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .background(GoldAccent.copy(alpha = 0.2f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.DesktopWindows, contentDescription = null, tint = GoldAccent)
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Web Portal & Windows App 💻🌐",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "Access on browser or download Windows PC app (.exe)",
+                                fontSize = 11.sp,
+                                color = GoldAccent,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                    Icon(Icons.Default.Download, contentDescription = null, tint = GoldAccent)
                 }
             }
         }
@@ -396,10 +449,10 @@ fun DashboardScreen(
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    SummaryRow(label = strings.totalDeposited, value = "%,d RWF".format(deposited.toInt()), valueColor = Color.White)
-                    SummaryRow(label = strings.totalEarned, value = "%,d RWF".format(earned.toInt()), valueColor = GreenSuccess)
-                    SummaryRow(label = strings.totalWithdrawn, value = "%,d RWF".format(withdrawn.toInt()), valueColor = RedDanger)
-                    SummaryRow(label = strings.referralBonus, value = "%,d RWF".format(referralBonus.toInt()), valueColor = GoldAccent)
+                    SummaryRow(label = strings.totalDeposited, value = selectedCurrency.format(deposited), valueColor = Color.White)
+                    SummaryRow(label = strings.totalEarned, value = selectedCurrency.format(earned), valueColor = GreenSuccess)
+                    SummaryRow(label = strings.totalWithdrawn, value = selectedCurrency.format(withdrawn), valueColor = RedDanger)
+                    SummaryRow(label = strings.referralBonus, value = selectedCurrency.format(referralBonus), valueColor = GoldAccent)
                 }
             }
         }

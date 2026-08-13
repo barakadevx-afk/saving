@@ -34,8 +34,12 @@ import androidx.compose.ui.window.Dialog
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
+import coil.compose.AsyncImage
 import com.example.data.i18n.AppStrings
+import com.example.data.model.AppCurrency
 import com.example.data.model.Language
 import com.example.data.model.SavingsCycleEntity
 import com.example.data.model.TransactionEntity
@@ -52,15 +56,20 @@ import java.util.Locale
 fun TopHeaderBar(
     strings: AppStrings,
     currentLanguage: Language,
+    currentCurrency: AppCurrency = AppCurrency.RWF,
+    isDarkMode: Boolean = false,
     userRole: UserRole,
     userName: String,
     onLanguageChange: (Language) -> Unit,
+    onCurrencyChange: (AppCurrency) -> Unit = {},
+    onToggleDarkMode: () -> Unit = {},
     onToggleRole: () -> Unit,
     onOpenNav: () -> Unit,
     onRefresh: (() -> Unit)? = null,
     isLoading: Boolean = false
 ) {
     var languageMenuExpanded by remember { mutableStateOf(false) }
+    var currencyMenuExpanded by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -178,7 +187,72 @@ fun TopHeaderBar(
                     }
                 }
 
-                Spacer(modifier = Modifier.width(8.dp))
+                Spacer(modifier = Modifier.width(6.dp))
+
+                // Currency Selector Dropdown
+                Box {
+                    Button(
+                        onClick = { currencyMenuExpanded = true },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = BentoBadgeGreyBg,
+                            contentColor = BentoHeroText
+                        ),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                        shape = RoundedCornerShape(20.dp),
+                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+                        modifier = Modifier.testTag("currency_selector_btn")
+                    ) {
+                        Text(text = "${currentCurrency.flag} ${currentCurrency.code}", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = "Select Currency",
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = currencyMenuExpanded,
+                        onDismissRequest = { currencyMenuExpanded = false },
+                        modifier = Modifier.background(BentoCardBg)
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("🇷🇼 RWF (Rwandan Franc)", color = TextPrimary, fontWeight = FontWeight.Medium) },
+                            onClick = {
+                                onCurrencyChange(AppCurrency.RWF)
+                                currencyMenuExpanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("🇺🇸 USD ($ USD Dollar)", color = TextPrimary, fontWeight = FontWeight.Medium) },
+                            onClick = {
+                                onCurrencyChange(AppCurrency.USD)
+                                currencyMenuExpanded = false
+                            }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(6.dp))
+
+                // Dark Mode Toggle Button
+                IconButton(
+                    onClick = onToggleDarkMode,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(BentoBadgeGreyBg)
+                        .testTag("dark_mode_toggle_btn")
+                ) {
+                    Icon(
+                        imageVector = if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
+                        contentDescription = if (isDarkMode) "Switch to Light Mode" else "Switch to Dark Mode",
+                        tint = if (isDarkMode) GoldAccent else BentoHeroText,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(6.dp))
 
                 if (onRefresh != null) {
                     IconButton(
@@ -244,6 +318,7 @@ fun TopHeaderBar(
 fun BentoHeroBalanceCard(
     availableBalance: Double,
     strings: AppStrings,
+    selectedCurrency: AppCurrency = AppCurrency.RWF,
     onOpenDepositModal: () -> Unit
 ) {
     Card(
@@ -306,7 +381,7 @@ fun BentoHeroBalanceCard(
             Spacer(modifier = Modifier.height(14.dp))
 
             Text(
-                text = "%,d RWF".format(availableBalance.toInt()),
+                text = selectedCurrency.format(availableBalance),
                 fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = BentoHeroText,
@@ -596,11 +671,12 @@ private fun TimeDigitBox(value: String, label: String) {
 fun ActiveCycleProgressCard(
     cycle: SavingsCycleEntity,
     strings: AppStrings,
+    selectedCurrency: AppCurrency = AppCurrency.RWF,
     onFastForward: () -> Unit
 ) {
-    val depositFormatted = "%,d RWF".format(cycle.depositAmount.toInt())
-    val rewardFormatted = "%,d RWF".format(cycle.expectedReward.toInt())
-    val totalPayoutFormatted = "%,d RWF".format((cycle.depositAmount + cycle.expectedReward).toInt())
+    val depositFormatted = selectedCurrency.format(cycle.depositAmount)
+    val rewardFormatted = selectedCurrency.format(cycle.expectedReward)
+    val totalPayoutFormatted = selectedCurrency.format(cycle.depositAmount + cycle.expectedReward)
 
     Card(
         modifier = Modifier
@@ -801,11 +877,22 @@ fun DepositModalDialog(
     strings: AppStrings,
     availableBalance: Double,
     onDismiss: () -> Unit,
-    onConfirmDeposit: (payFromAvailable: Boolean) -> Unit
+    onConfirmDeposit: (payFromAvailable: Boolean) -> Unit,
+    onSubmitDepositRequest: (amount: Double, transactionId: String, proofScreenshotUri: String) -> Unit = { _, _, _ -> }
 ) {
     val context = LocalContext.current
     var payFromAvailable by remember { mutableStateOf(false) }
     var agreedDisclaimer by remember { mutableStateOf(false) }
+    var transactionIdInput by remember { mutableStateOf("") }
+    var proofScreenshotUri by remember { mutableStateOf("") }
+
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            proofScreenshotUri = uri.toString()
+        }
+    }
 
     val amount = when (selectedTier) {
         "A" -> 6000.0
@@ -897,7 +984,7 @@ fun DepositModalDialog(
                         )
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "After sending money, call Admin or message on WhatsApp to verify and add money to your account.",
+                            text = "After sending money, input your Transaction ID and attach the payment screenshot below for Admin verification.",
                             fontSize = 11.sp,
                             color = TextSecondary,
                             lineHeight = 15.sp
@@ -923,7 +1010,7 @@ fun DepositModalDialog(
                                     launchWhatsAppIntent(
                                         context = context,
                                         phoneNumber = "250792828727",
-                                        message = "Hello Admin, I have paid %,d RWF to code 1799283 for FUTURE SMART CAPITAL. Please add money to my account.".format(amount.toInt())
+                                        message = "Hello Admin, I paid %,d RWF to code 1799283. Tx ID: %s. Please verify and credit my account.".format(amount.toInt(), transactionIdInput.ifBlank { "N/A" })
                                     )
                                 },
                                 modifier = Modifier.weight(1f).testTag("whatsapp_admin_btn"),
@@ -941,7 +1028,7 @@ fun DepositModalDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Text(text = "Payment Source", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                Text(text = "Payment Method", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -962,6 +1049,82 @@ fun DepositModalDialog(
                         fontSize = 13.sp,
                         color = if (availableBalance >= amount) TextPrimary else RedDanger
                     )
+                }
+
+                if (!payFromAvailable) {
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    OutlinedTextField(
+                        value = transactionIdInput,
+                        onValueChange = { transactionIdInput = it },
+                        label = { Text("Transaction ID / MoMo Reference No.*") },
+                        placeholder = { Text("e.g. 1829302910") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("deposit_tx_id_input")
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(text = "Upload Payment Screenshot Proof*", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    if (proofScreenshotUri.isNotEmpty()) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = Color(0xFFF1F5F9),
+                            border = BorderStroke(1.dp, BluePrimary),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                AsyncImage(
+                                    model = proofScreenshotUri,
+                                    contentDescription = "Payment Screenshot",
+                                    modifier = Modifier
+                                        .height(100.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = GreenSuccess, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Screenshot Attached", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = GreenSuccess)
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    TextButton(
+                                        onClick = { proofScreenshotUri = "" },
+                                        contentPadding = PaddingValues(0.dp)
+                                    ) {
+                                        Text("Remove", fontSize = 11.sp, color = RedDanger)
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = { photoPickerLauncher.launch("image/*") },
+                                modifier = Modifier.weight(1f).testTag("upload_screenshot_btn"),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Upload Image", fontSize = 11.sp)
+                            }
+
+                            TextButton(
+                                onClick = { proofScreenshotUri = "https://picsum.photos/seed/momo_receipt_${System.currentTimeMillis()}/400/600" },
+                                modifier = Modifier.testTag("sample_screenshot_btn")
+                            ) {
+                                Text("Use Sample Receipt 🖼️", fontSize = 11.sp, color = BluePrimary)
+                            }
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(10.dp))
@@ -991,15 +1154,24 @@ fun DepositModalDialog(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Button(
-                    onClick = { onConfirmDeposit(payFromAvailable) },
-                    enabled = agreedDisclaimer && (!payFromAvailable || availableBalance >= amount),
+                    onClick = {
+                        if (payFromAvailable) {
+                            onConfirmDeposit(true)
+                        } else {
+                            onSubmitDepositRequest(amount, transactionIdInput, proofScreenshotUri)
+                        }
+                    },
+                    enabled = agreedDisclaimer && (payFromAvailable && availableBalance >= amount || !payFromAvailable && transactionIdInput.isNotBlank()),
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("confirm_deposit_btn"),
                     colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text(text = "Confirm & Start 3-Day Cycle 🔒", fontWeight = FontWeight.Bold)
+                    Text(
+                        text = if (payFromAvailable) "Confirm & Start 3-Day Cycle 🔒" else "Submit Deposit for Verification 📤",
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
         }

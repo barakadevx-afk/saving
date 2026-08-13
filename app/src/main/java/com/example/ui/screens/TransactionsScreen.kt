@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.i18n.AppStrings
+import com.example.data.model.AppCurrency
 import com.example.data.model.TransactionEntity
 import com.example.data.model.TransactionStatus
 import com.example.data.model.TransactionType
@@ -30,7 +31,8 @@ enum class TxFilterMode { ALL, PENDING, REWARDED, DEPOSITS, WITHDRAWALS }
 @Composable
 fun TransactionsScreen(
     transactions: List<TransactionEntity>,
-    strings: AppStrings
+    strings: AppStrings,
+    selectedCurrency: AppCurrency = AppCurrency.RWF
 ) {
     var selectedFilter by remember { mutableStateOf(TxFilterMode.ALL) }
     var searchQuery by remember { mutableStateOf("") }
@@ -137,7 +139,7 @@ fun TransactionsScreen(
                         Column {
                             Text("Total Deposited", fontSize = 11.sp, color = TextSecondary)
                             Text(
-                                text = "%,d RWF".format(totalDeposited.toInt()),
+                                text = selectedCurrency.format(totalDeposited),
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = BentoPrimaryBlue
@@ -147,7 +149,7 @@ fun TransactionsScreen(
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text("50% Profit Yields", fontSize = 11.sp, color = TextSecondary)
                             Text(
-                                text = "+%,d RWF".format(totalRewardsEarned.toInt()),
+                                text = "+${selectedCurrency.format(totalRewardsEarned)}",
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = GreenSuccess
@@ -157,7 +159,7 @@ fun TransactionsScreen(
                         Column(horizontalAlignment = Alignment.End) {
                             Text("Total Payouts", fontSize = 11.sp, color = TextSecondary)
                             Text(
-                                text = "%,d RWF".format(totalWithdrawn.toInt()),
+                                text = selectedCurrency.format(totalWithdrawn),
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextPrimary

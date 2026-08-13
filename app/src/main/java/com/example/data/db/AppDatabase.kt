@@ -15,10 +15,11 @@ import com.example.data.model.*
         SavingsCycleEntity::class,
         TransactionEntity::class,
         WithdrawalEntity::class,
+        DepositRequestEntity::class,
         AdminConfigEntity::class,
         AdminLogEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -27,6 +28,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun savingsCycleDao(): SavingsCycleDao
     abstract fun transactionDao(): TransactionDao
     abstract fun withdrawalDao(): WithdrawalDao
+    abstract fun depositRequestDao(): DepositRequestDao
     abstract fun adminDao(): AdminDao
 
     companion object {

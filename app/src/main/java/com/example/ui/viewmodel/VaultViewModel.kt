@@ -9,6 +9,8 @@ import com.example.data.repository.VaultRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
+import com.example.data.repository.CurrencyPreferencesRepository
+
 enum class NavigationTab {
     DASHBOARD,
     WALLET,
@@ -18,11 +20,22 @@ enum class NavigationTab {
     WITHDRAW,
     FAQ,
     ADMIN,
-    PROFILE
+    PROFILE,
+    WEB_DOWNLOAD
 }
 
 class VaultViewModel(application: Application) : AndroidViewModel(application) {
     private val repository: VaultRepository
+    private val currencyPrefsRepo = CurrencyPreferencesRepository(application)
+
+    val selectedCurrency: StateFlow<AppCurrency> = currencyPrefsRepo.selectedCurrencyFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AppCurrency.RWF)
+
+    val isDarkMode: StateFlow<Boolean> = currencyPrefsRepo.isDarkModeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val currentLanguage: StateFlow<Language> = currencyPrefsRepo.selectedLanguageFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Language.EN)
 
     init {
         val db = AppDatabase.getDatabase(application)
@@ -33,6 +46,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
             savingsCycleDao = db.savingsCycleDao(),
             transactionDao = db.transactionDao(),
             withdrawalDao = db.withdrawalDao(),
+            depositRequestDao = db.depositRequestDao(),
             adminDao = db.adminDao()
         )
         viewModelScope.launch {
@@ -49,9 +63,6 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
 
     private val _activeTab = MutableStateFlow(NavigationTab.DASHBOARD)
     val activeTab: StateFlow<NavigationTab> = _activeTab.asStateFlow()
-
-    private val _currentLanguage = MutableStateFlow(Language.EN)
-    val currentLanguage: StateFlow<Language> = _currentLanguage.asStateFlow()
 
     private val _showDepositModal = MutableStateFlow(false)
     val showDepositModal: StateFlow<Boolean> = _showDepositModal.asStateFlow()
@@ -88,6 +99,12 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     val pendingWithdrawals: StateFlow<List<WithdrawalEntity>> = repository.getPendingWithdrawalsFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val pendingDepositRequests: StateFlow<List<DepositRequestEntity>> = repository.getPendingDepositRequests()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allDepositRequests: StateFlow<List<DepositRequestEntity>> = repository.getAllDepositRequests()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val allUsers: StateFlow<List<UserEntity>> = repository.getAllUsersFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -99,13 +116,34 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun setLanguage(lang: Language) {
-        _currentLanguage.value = lang
-        val user = _currentUser.value
-        if (user != null) {
-            viewModelScope.launch {
+        viewModelScope.launch {
+            currencyPrefsRepo.setLanguage(lang)
+            val user = _currentUser.value
+            if (user != null) {
                 repository.updateUserLanguage(user.id, lang)
                 _currentUser.value = user.copy(language = lang)
             }
+            val msg = when (lang) {
+                Language.EN -> "Language set to English 🇬🇧"
+                Language.RW -> "Ururimi rwahinduwe mu Kinyarwanda 🇷🇼"
+                Language.FR -> "Langue changée en Français 🇫🇷"
+            }
+            showMessage(msg)
+        }
+    }
+
+    fun setCurrency(currency: AppCurrency) {
+        viewModelScope.launch {
+            currencyPrefsRepo.setCurrency(currency)
+            showMessage("Currency changed to ${currency.flag} ${currency.code}")
+        }
+    }
+
+    fun toggleDarkMode() {
+        viewModelScope.launch {
+            val newMode = !isDarkMode.value
+            currencyPrefsRepo.setDarkMode(newMode)
+            showMessage(if (newMode) "Dark mode enabled 🌙" else "Light mode enabled ☀️")
         }
     }
 
@@ -143,12 +181,18 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun logout() {
+        _currentUser.value = null
+        _activeTab.value = NavigationTab.DASHBOARD
+        showMessage("Logged out successfully.")
+    }
+
     fun login(identifier: String, pass: String, onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
             val user = repository.getUserByPhoneOrEmail(identifier)
             if (user != null && (user.passwordHash == pass || (user.role == UserRole.ADMIN && (pass == "BARAKA@123!" || pass == "admin123" || pass == "1799283")))) {
                 _currentUser.value = user
-                _currentLanguage.value = user.language
+                currencyPrefsRepo.setLanguage(user.language)
                 onSuccess()
             } else {
                 showMessage("Invalid credentials. Try Admin Phone 0792828727 with BARAKA@123!")
@@ -169,7 +213,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                 fullName = fullName,
                 passwordHash = pass,
                 role = role,
-                language = _currentLanguage.value,
+                language = currentLanguage.value,
                 referralCode = userRefCode
             )
             repository.registerUser(newUser, referralCode)
@@ -243,6 +287,84 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
             } else {
                 showMessage("Error: $res")
             }
+        }
+    }
+
+    fun submitDepositRequest(
+        amount: Double,
+        tierId: String,
+        transactionId: String,
+        proofScreenshotUri: String,
+        paymentMethod: String = "MTN Mobile Money Code 1799283"
+    ) {
+        val user = _currentUser.value ?: return
+        viewModelScope.launch {
+            val res = repository.submitDepositRequest(
+                userId = user.id,
+                amount = amount,
+                tierId = tierId,
+                transactionId = transactionId,
+                proofScreenshotUri = proofScreenshotUri,
+                paymentMethod = paymentMethod
+            )
+            if (res == "SUCCESS") {
+                closeDepositModal()
+                showMessage("Deposit request submitted with Tx ID #$transactionId! Pending Admin Approval ⏳")
+            } else {
+                showMessage("Error: $res")
+            }
+        }
+    }
+
+    fun approveDepositRequest(requestId: String) {
+        val admin = _currentUser.value ?: return
+        viewModelScope.launch {
+            val res = repository.approveDepositRequest(requestId, admin.id)
+            if (res == "SUCCESS") {
+                showMessage("Deposit Request Approved & Funds Credited! 💰")
+            } else {
+                showMessage("Error: $res")
+            }
+        }
+    }
+
+    fun rejectDepositRequest(requestId: String, note: String = "Deposit Verification Failed") {
+        val admin = _currentUser.value ?: return
+        viewModelScope.launch {
+            val res = repository.rejectDepositRequest(requestId, admin.id, note)
+            if (res == "SUCCESS") {
+                showMessage("Deposit Request Rejected")
+            } else {
+                showMessage("Error: $res")
+            }
+        }
+    }
+
+    fun addNewUserOrAdmin(
+        fullName: String,
+        phone: String,
+        email: String,
+        pass: String,
+        role: UserRole,
+        onSuccess: () -> Unit = {}
+    ) {
+        val admin = _currentUser.value ?: return
+        viewModelScope.launch {
+            val res = repository.addNewUserOrAdmin(fullName, phone, email, pass, role, admin.id)
+            if (res == "SUCCESS") {
+                showMessage("New ${role.name} '$fullName' created successfully! 🎉")
+                onSuccess()
+            } else {
+                showMessage(res)
+            }
+        }
+    }
+
+    fun updateUserRole(userId: String, newRole: UserRole) {
+        val admin = _currentUser.value ?: return
+        viewModelScope.launch {
+            repository.updateUserRole(userId, newRole, admin.id)
+            showMessage("User role updated to ${newRole.name}")
         }
     }
 }

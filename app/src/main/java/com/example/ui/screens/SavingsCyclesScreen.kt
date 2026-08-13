@@ -16,6 +16,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.i18n.AppStrings
+import com.example.data.model.AppCurrency
 import com.example.data.model.CycleStatus
 import com.example.data.model.SavingsCycleEntity
 import com.example.ui.components.ActiveCycleProgressCard
@@ -29,6 +30,7 @@ import java.util.Locale
 fun SavingsCyclesScreen(
     cycles: List<SavingsCycleEntity>,
     strings: AppStrings,
+    selectedCurrency: AppCurrency = AppCurrency.RWF,
     onFastForward: () -> Unit,
     onOpenDepositModal: () -> Unit
 ) {
@@ -132,6 +134,7 @@ fun SavingsCyclesScreen(
                 ActiveCycleProgressCard(
                     cycle = cycle,
                     strings = strings,
+                    selectedCurrency = selectedCurrency,
                     onFastForward = onFastForward
                 )
             }
@@ -158,14 +161,14 @@ fun SavingsCyclesScreen(
             }
         } else {
             items(pastCycles) { cycle ->
-                PastCycleCard(cycle = cycle, strings = strings)
+                PastCycleCard(cycle = cycle, strings = strings, selectedCurrency = selectedCurrency)
             }
         }
     }
 }
 
 @Composable
-fun PastCycleCard(cycle: SavingsCycleEntity, strings: AppStrings) {
+fun PastCycleCard(cycle: SavingsCycleEntity, strings: AppStrings, selectedCurrency: AppCurrency = AppCurrency.RWF) {
     val dateStr = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(cycle.startDate))
     val settledStr = if (cycle.settledAt != null) SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()).format(Date(cycle.settledAt)) else "Completed"
 
@@ -190,13 +193,13 @@ fun PastCycleCard(cycle: SavingsCycleEntity, strings: AppStrings) {
 
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "%,d RWF".format(cycle.depositAmount.toInt()),
+                    text = selectedCurrency.format(cycle.depositAmount),
                     fontWeight = FontWeight.Bold,
                     fontSize = 15.sp,
                     color = TextPrimary
                 )
                 Text(
-                    text = "+%,d RWF Reward".format(cycle.expectedReward.toInt()),
+                    text = "+${selectedCurrency.format(cycle.expectedReward)} Reward",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     color = GreenSuccess

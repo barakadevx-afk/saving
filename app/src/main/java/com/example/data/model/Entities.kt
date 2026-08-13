@@ -74,6 +74,21 @@ data class WithdrawalEntity(
     val processedAt: Long? = null
 )
 
+@Entity(tableName = "deposit_requests")
+data class DepositRequestEntity(
+    @PrimaryKey val id: String,
+    val userId: String,
+    val amount: Double,
+    val tierId: String = "CUSTOM", // "A", "B", "C", "D", or "CUSTOM"
+    val transactionId: String,
+    val proofScreenshotUri: String = "",
+    val paymentMethod: String = "MTN Mobile Money Code 1799283",
+    val status: TransactionStatus = TransactionStatus.PENDING,
+    val requestedAt: Long = System.currentTimeMillis(),
+    val processedAt: Long? = null,
+    val adminNote: String? = null
+)
+
 @Entity(tableName = "admin_config")
 data class AdminConfigEntity(
     @PrimaryKey val id: Int = 1,

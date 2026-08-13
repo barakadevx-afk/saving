@@ -13,6 +13,7 @@ class VaultRepository(
     private val savingsCycleDao: SavingsCycleDao,
     private val transactionDao: TransactionDao,
     private val withdrawalDao: WithdrawalDao,
+    private val depositRequestDao: DepositRequestDao,
     private val adminDao: AdminDao
 ) {
     suspend fun seedDefaultDataIfEmpty() {
@@ -589,5 +590,168 @@ class VaultRepository(
             )
         )
         return "SUCCESS"
+    }
+
+    // Deposit Requests Flow
+    fun getPendingDepositRequests(): Flow<List<DepositRequestEntity>> =
+        depositRequestDao.getPendingDepositRequests()
+
+    fun getAllDepositRequests(): Flow<List<DepositRequestEntity>> =
+        depositRequestDao.getAllDepositRequests()
+
+    fun getDepositRequestsByUserId(userId: String): Flow<List<DepositRequestEntity>> =
+        depositRequestDao.getDepositRequestsByUserId(userId)
+
+    suspend fun submitDepositRequest(
+        userId: String,
+        amount: Double,
+        tierId: String,
+        transactionId: String,
+        proofScreenshotUri: String,
+        paymentMethod: String = "MTN Mobile Money Code 1799283"
+    ): String {
+        if (amount <= 0) return "Invalid deposit amount"
+        if (transactionId.isBlank()) return "Transaction ID is required"
+
+        val requestId = "DEP-${(100000..999999).random()}"
+        val request = DepositRequestEntity(
+            id = requestId,
+            userId = userId,
+            amount = amount,
+            tierId = tierId,
+            transactionId = transactionId.trim(),
+            proofScreenshotUri = proofScreenshotUri,
+            paymentMethod = paymentMethod,
+            status = TransactionStatus.PENDING,
+            requestedAt = System.currentTimeMillis()
+        )
+        depositRequestDao.insertDepositRequest(request)
+
+        val tx = TransactionEntity(
+            id = UUID.randomUUID().toString(),
+            userId = userId,
+            type = TransactionType.DEPOSIT,
+            amount = amount,
+            description = "Deposit Request #$requestId (Tx: $transactionId)",
+            status = TransactionStatus.PENDING,
+            timestamp = System.currentTimeMillis()
+        )
+        transactionDao.insertTransaction(tx)
+
+        return "SUCCESS"
+    }
+
+    suspend fun approveDepositRequest(requestId: String, adminId: String): String {
+        val req = depositRequestDao.getDepositRequestById(requestId) ?: return "Deposit request not found"
+        if (req.status != TransactionStatus.PENDING) return "Deposit request already processed"
+
+        val now = System.currentTimeMillis()
+        depositRequestDao.updateDepositRequestStatus(requestId, TransactionStatus.APPROVED, now, "Approved by Admin $adminId")
+
+        // Add funds to user wallet
+        val res = addFundsToUser(
+            userId = req.userId,
+            amount = req.amount,
+            adminId = adminId,
+            note = "Approved Deposit #$requestId (Tx: ${req.transactionId})"
+        )
+
+        adminDao.insertAdminLog(
+            AdminLogEntity(
+                adminId = adminId,
+                action = "DEPOSIT_APPROVED",
+                details = "Approved deposit request $requestId for user ${req.userId} (Amount: %,d RWF, Tx: ${req.transactionId})".format(req.amount.toInt())
+            )
+        )
+        return res
+    }
+
+    suspend fun rejectDepositRequest(requestId: String, adminId: String, note: String = "Deposit Verification Failed"): String {
+        val req = depositRequestDao.getDepositRequestById(requestId) ?: return "Deposit request not found"
+        if (req.status != TransactionStatus.PENDING) return "Deposit request already processed"
+
+        val now = System.currentTimeMillis()
+        depositRequestDao.updateDepositRequestStatus(requestId, TransactionStatus.REJECTED, now, note)
+
+        adminDao.insertAdminLog(
+            AdminLogEntity(
+                adminId = adminId,
+                action = "DEPOSIT_REJECTED",
+                details = "Rejected deposit request $requestId for user ${req.userId} ($note)"
+            )
+        )
+        return "SUCCESS"
+    }
+
+    // User & Admin Management
+    suspend fun addNewUserOrAdmin(
+        fullName: String,
+        phone: String,
+        email: String,
+        pass: String,
+        role: UserRole,
+        adminId: String
+    ): String {
+        if (fullName.isBlank() || phone.isBlank() || pass.isBlank()) {
+            return "Please fill in all required fields"
+        }
+
+        val existingPhone = userDao.getUserByPhoneOrEmail(phone)
+        if (existingPhone != null) {
+            return "A user with this phone number already exists"
+        }
+
+        val effectiveEmail = if (email.isBlank()) "user_${System.currentTimeMillis()}@barakavault.rw" else email
+        val existingEmail = userDao.getUserByEmail(effectiveEmail)
+        if (existingEmail != null) {
+            return "A user with this email address already exists"
+        }
+
+        val userId = if (role == UserRole.ADMIN) "admin_${(1000..9999).random()}" else "usr_${(100000..999999).random()}"
+        val refCode = (fullName.take(3) + (1000..9999).random()).uppercase()
+
+        val newUser = UserEntity(
+            id = userId,
+            email = effectiveEmail,
+            phone = phone,
+            fullName = fullName,
+            passwordHash = pass,
+            role = role,
+            language = Language.EN,
+            referralCode = refCode
+        )
+        userDao.insertUser(newUser)
+
+        val newWallet = WalletEntity(
+            userId = userId,
+            availableBalance = 0.0,
+            lockedBalance = 0.0,
+            totalEarned = 0.0,
+            totalDeposited = 0.0,
+            totalWithdrawn = 0.0,
+            referralBonus = 0.0
+        )
+        walletDao.insertWallet(newWallet)
+
+        adminDao.insertAdminLog(
+            AdminLogEntity(
+                adminId = adminId,
+                action = if (role == UserRole.ADMIN) "ADMIN_CREATED" else "USER_CREATED",
+                details = "Created new ${role.name}: $fullName ($phone, ID: $userId)"
+            )
+        )
+
+        return "SUCCESS"
+    }
+
+    suspend fun updateUserRole(userId: String, newRole: UserRole, adminId: String) {
+        userDao.updateUserRole(userId, newRole)
+        adminDao.insertAdminLog(
+            AdminLogEntity(
+                adminId = adminId,
+                action = "ROLE_UPDATED",
+                details = "Updated user $userId role to ${newRole.name}"
+            )
+        )
     }
 }

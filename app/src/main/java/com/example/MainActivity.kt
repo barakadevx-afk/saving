@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.data.i18n.Translations
+import com.example.data.model.AppCurrency
 import com.example.data.model.UserRole
 import com.example.ui.components.DepositModalDialog
 import com.example.ui.components.TopHeaderBar
@@ -37,7 +38,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         com.example.notification.NotificationHelper.createNotificationChannel(this)
         setContent {
-            BarakaVaultTheme {
+            val viewModel: VaultViewModel = viewModel()
+            val isDarkMode by viewModel.isDarkMode.collectAsStateWithLifecycle()
+
+            BarakaVaultTheme(darkTheme = isDarkMode) {
                 // Request Notification Permission on Android 13+
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                     val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -51,7 +55,7 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                BarakaVaultApp()
+                BarakaVaultApp(viewModel = viewModel)
             }
         }
     }
@@ -66,11 +70,14 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
     val referredUsers by viewModel.referredUsers.collectAsStateWithLifecycle()
     val adminConfig by viewModel.adminConfig.collectAsStateWithLifecycle()
     val pendingWithdrawals by viewModel.pendingWithdrawals.collectAsStateWithLifecycle()
+    val pendingDepositRequests by viewModel.pendingDepositRequests.collectAsStateWithLifecycle()
     val allUsers by viewModel.allUsers.collectAsStateWithLifecycle()
     val adminLogs by viewModel.adminLogs.collectAsStateWithLifecycle()
 
     val activeTab by viewModel.activeTab.collectAsStateWithLifecycle()
     val currentLanguage by viewModel.currentLanguage.collectAsStateWithLifecycle()
+    val selectedCurrency by viewModel.selectedCurrency.collectAsStateWithLifecycle()
+    val isDarkMode by viewModel.isDarkMode.collectAsStateWithLifecycle()
     val showDepositModal by viewModel.showDepositModal.collectAsStateWithLifecycle()
     val selectedDepositTier by viewModel.selectedDepositTier.collectAsStateWithLifecycle()
     val userMessage by viewModel.userMessage.collectAsStateWithLifecycle()
@@ -209,6 +216,28 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                         modifier = Modifier.padding(horizontal = 12.dp).testTag("nav_faq")
                     )
 
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.DesktopWindows, contentDescription = null, tint = GoldAccent) },
+                        label = { Text("Web & Windows App 🌐💻", color = Color.White, fontWeight = FontWeight.Bold) },
+                        selected = activeTab == NavigationTab.WEB_DOWNLOAD,
+                        onClick = {
+                            viewModel.selectTab(NavigationTab.WEB_DOWNLOAD)
+                            coroutineScope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.padding(horizontal = 12.dp).testTag("nav_web_download")
+                    )
+
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.Settings, contentDescription = null, tint = Color.White) },
+                        label = { Text(strings.profileSettings, color = Color.White) },
+                        selected = activeTab == NavigationTab.PROFILE,
+                        onClick = {
+                            viewModel.selectTab(NavigationTab.PROFILE)
+                            coroutineScope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.padding(horizontal = 12.dp).testTag("nav_settings")
+                    )
+
                     if (user.role == UserRole.ADMIN) {
                         NavigationDrawerItem(
                             icon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = GoldAccent) },
@@ -225,11 +254,21 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                     Spacer(modifier = Modifier.weight(1f))
 
                     NavigationDrawerItem(
+                        icon = { Icon(if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode, contentDescription = null, tint = Color.White) },
+                        label = { Text(if (isDarkMode) "Light Theme" else "Dark Theme", color = Color.White) },
+                        selected = false,
+                        onClick = {
+                            viewModel.toggleDarkMode()
+                        },
+                        modifier = Modifier.padding(horizontal = 12.dp).testTag("nav_theme_toggle")
+                    )
+
+                    NavigationDrawerItem(
                         icon = { Icon(Icons.Default.Logout, contentDescription = null, tint = Color.LightGray) },
                         label = { Text(strings.logout, color = Color.LightGray) },
                         selected = false,
                         onClick = {
-                            viewModel.login("", "")
+                            viewModel.logout()
                             coroutineScope.launch { drawerState.close() }
                         },
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp).testTag("nav_logout")
@@ -242,9 +281,13 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                     TopHeaderBar(
                         strings = strings,
                         currentLanguage = currentLanguage,
+                        currentCurrency = selectedCurrency,
+                        isDarkMode = isDarkMode,
                         userRole = user.role,
                         userName = user.fullName,
                         onLanguageChange = { lang -> viewModel.setLanguage(lang) },
+                        onCurrencyChange = { curr -> viewModel.setCurrency(curr) },
+                        onToggleDarkMode = { viewModel.toggleDarkMode() },
                         onToggleRole = { viewModel.toggleRole() },
                         onOpenNav = { coroutineScope.launch { drawerState.open() } },
                         onRefresh = { viewModel.refreshData() },
@@ -346,12 +389,14 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                                 adminConfig = adminConfig,
                                 strings = strings,
                                 referredUsers = referredUsers,
+                                selectedCurrency = selectedCurrency,
                                 isLoading = isLoading,
                                 onOpenDepositModal = { tierId -> viewModel.openDepositModal(tierId) },
                                 onFastForward = { viewModel.triggerCycleWorkerFastForward() },
                                 onViewAllTransactions = { viewModel.selectTab(NavigationTab.TRANSACTIONS) },
                                 onWithdrawClick = { viewModel.selectTab(NavigationTab.WITHDRAW) },
-                                onFaqClick = { viewModel.selectTab(NavigationTab.FAQ) }
+                                onFaqClick = { viewModel.selectTab(NavigationTab.FAQ) },
+                                onWebDownloadClick = { viewModel.selectTab(NavigationTab.WEB_DOWNLOAD) }
                             )
                         }
 
@@ -359,6 +404,7 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                             SavingsCyclesScreen(
                                 cycles = userCycles,
                                 strings = strings,
+                                selectedCurrency = selectedCurrency,
                                 onFastForward = { viewModel.triggerCycleWorkerFastForward() },
                                 onOpenDepositModal = { viewModel.openDepositModal("C") }
                             )
@@ -380,6 +426,7 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                                         )
                                     },
                                 strings = strings,
+                                selectedCurrency = selectedCurrency,
                                 onRequestWithdrawal = { amount, method, accountNum ->
                                     viewModel.requestWithdrawal(amount, method, accountNum)
                                 }
@@ -389,7 +436,8 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                         NavigationTab.TRANSACTIONS -> {
                             TransactionsScreen(
                                 transactions = userTransactions,
-                                strings = strings
+                                strings = strings,
+                                selectedCurrency = selectedCurrency
                             )
                         }
 
@@ -400,19 +448,50 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                             )
                         }
 
+                        NavigationTab.WEB_DOWNLOAD -> {
+                            WebDownloadScreen(
+                                strings = strings,
+                                onShowMessage = { msg -> viewModel.showMessage(msg) }
+                            )
+                        }
+
+                        NavigationTab.PROFILE -> {
+                            SettingsScreen(
+                                user = user,
+                                strings = strings,
+                                currentLanguage = currentLanguage,
+                                selectedCurrency = selectedCurrency,
+                                isDarkMode = isDarkMode,
+                                onLanguageChange = { lang -> viewModel.setLanguage(lang) },
+                                onCurrencyChange = { curr -> viewModel.setCurrency(curr) },
+                                onToggleDarkMode = { viewModel.toggleDarkMode() },
+                                onToggleRole = { viewModel.toggleRole() },
+                                onLogout = { viewModel.logout() }
+                            )
+                        }
+
                         NavigationTab.ADMIN -> {
                             AdminPanelScreen(
                                 adminConfig = adminConfig,
                                 pendingWithdrawals = pendingWithdrawals,
+                                pendingDepositRequests = pendingDepositRequests,
                                 allUsers = allUsers,
                                 adminLogs = adminLogs,
                                 strings = strings,
                                 onApproveWithdrawal = { id -> viewModel.approveWithdrawal(id) },
                                 onRejectWithdrawal = { id -> viewModel.rejectWithdrawal(id) },
+                                onApproveDeposit = { id -> viewModel.approveDepositRequest(id) },
+                                onRejectDeposit = { id, note -> viewModel.rejectDepositRequest(id, note) },
                                 onUpdateRates = { a, b, c, d -> viewModel.updateRates(a, b, c, d) },
                                 onTriggerSettlement = { viewModel.triggerCycleWorkerFastForward() },
                                 onAddFundsToUser = { targetUserId, amount, note ->
                                     viewModel.addFundsToUser(targetUserId, amount, note)
+                                },
+                                onAddNewUserOrAdmin = { fullName, phone, email, pass, role ->
+                                    viewModel.addNewUserOrAdmin(fullName, phone, email, pass, role)
+                                },
+                                onUpdateUserRole = { userId, newRole ->
+                                    viewModel.updateUserRole(userId, newRole)
                                 }
                             )
                         }
@@ -444,6 +523,14 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                             onDismiss = { viewModel.closeDepositModal() },
                             onConfirmDeposit = { payFromAvailable ->
                                 viewModel.makeDeposit(selectedDepositTier, payFromAvailable)
+                            },
+                            onSubmitDepositRequest = { amount, txId, screenshotUri ->
+                                viewModel.submitDepositRequest(
+                                    amount = amount,
+                                    tierId = selectedDepositTier,
+                                    transactionId = txId,
+                                    proofScreenshotUri = screenshotUri
+                                )
                             }
                         )
                     }

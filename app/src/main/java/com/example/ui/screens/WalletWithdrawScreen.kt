@@ -20,6 +20,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.i18n.AppStrings
+import com.example.data.model.AppCurrency
 import com.example.data.model.TransactionStatus
 import com.example.data.model.WalletEntity
 import com.example.data.model.WithdrawalEntity
@@ -35,6 +36,7 @@ fun WalletWithdrawScreen(
     wallet: WalletEntity?,
     withdrawals: List<WithdrawalEntity>,
     strings: AppStrings,
+    selectedCurrency: AppCurrency = AppCurrency.RWF,
     onRequestWithdrawal: (amount: Double, method: String, accountNum: String) -> Unit
 ) {
     val available = wallet?.availableBalance ?: 0.0
@@ -83,7 +85,7 @@ fun WalletWithdrawScreen(
                         Text(text = strings.availableBalance, fontSize = 12.sp, color = BentoHeroText.copy(alpha = 0.8f), fontWeight = FontWeight.Medium)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "%,d RWF".format(available.toInt()),
+                            text = selectedCurrency.format(available),
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = BentoHeroText,
@@ -104,7 +106,7 @@ fun WalletWithdrawScreen(
                         Text(text = strings.lockedBalance, fontSize = 12.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "%,d RWF".format(locked.toInt()),
+                            text = selectedCurrency.format(locked),
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary,

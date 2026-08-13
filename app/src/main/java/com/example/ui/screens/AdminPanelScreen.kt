@@ -2,6 +2,7 @@ package com.example.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -10,6 +11,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -26,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
 import com.example.ui.components.launchPhoneCallIntent
 import com.example.ui.components.launchWhatsAppIntent
 
@@ -33,14 +36,19 @@ import com.example.ui.components.launchWhatsAppIntent
 fun AdminPanelScreen(
     adminConfig: AdminConfigEntity?,
     pendingWithdrawals: List<WithdrawalEntity>,
+    pendingDepositRequests: List<DepositRequestEntity> = emptyList(),
     allUsers: List<UserEntity>,
     adminLogs: List<AdminLogEntity>,
     strings: AppStrings,
     onApproveWithdrawal: (String) -> Unit,
     onRejectWithdrawal: (String) -> Unit,
+    onApproveDeposit: (String) -> Unit = {},
+    onRejectDeposit: (requestId: String, note: String) -> Unit = { _, _ -> },
     onUpdateRates: (rateA: Double, rateB: Double, rateC: Double, rateD: Double) -> Unit,
     onTriggerSettlement: () -> Unit,
-    onAddFundsToUser: (userId: String, amount: Double, note: String) -> Unit = { _, _, _ -> }
+    onAddFundsToUser: (userId: String, amount: Double, note: String) -> Unit = { _, _, _ -> },
+    onAddNewUserOrAdmin: (fullName: String, phone: String, email: String, pass: String, role: UserRole) -> Unit = { _, _, _, _, _ -> },
+    onUpdateUserRole: (userId: String, newRole: UserRole) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     var rateAStr by remember { mutableStateOf("%.2f".format((adminConfig?.rateTierA ?: 0.02) * 100)) }
@@ -50,6 +58,8 @@ fun AdminPanelScreen(
 
     var userQuery by remember { mutableStateOf("") }
     var selectedUserForFunds by remember { mutableStateOf<UserEntity?>(null) }
+    var showAddUserDialog by remember { mutableStateOf(false) }
+    var selectedScreenshotForZoom by remember { mutableStateOf<String?>(null) }
 
     val filteredUsers = allUsers.filter {
         it.fullName.contains(userQuery, ignoreCase = true) ||
@@ -159,6 +169,162 @@ fun AdminPanelScreen(
                         modifier = Modifier.fillMaxWidth().testTag("admin_confirm_add_funds_btn")
                     ) {
                         Text(text = "Credit Balance Now 💰", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+
+    if (selectedScreenshotForZoom != null) {
+        Dialog(onDismissRequest = { selectedScreenshotForZoom = null }) {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = LightSurface)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Payment Proof Screenshot 📸", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        IconButton(onClick = { selectedScreenshotForZoom = null }) {
+                            Icon(Icons.Default.Close, contentDescription = "Close")
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(10.dp))
+                    AsyncImage(
+                        model = selectedScreenshotForZoom,
+                        contentDescription = "Zoomed Payment Proof Screenshot",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 400.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                    )
+                }
+            }
+        }
+    }
+
+    if (showAddUserDialog) {
+        var newFullName by remember { mutableStateOf("") }
+        var newPhone by remember { mutableStateOf("") }
+        var newEmail by remember { mutableStateOf("") }
+        var newPass by remember { mutableStateOf("") }
+        var selectedRole by remember { mutableStateOf(UserRole.USER) }
+
+        Dialog(onDismissRequest = { showAddUserDialog = false }) {
+            Card(
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = LightSurface)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(20.dp)
+                        .fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Add New User / Admin 👤",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        IconButton(onClick = { showAddUserDialog = false }) {
+                            Icon(Icons.Default.Close, contentDescription = "Close")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = newFullName,
+                        onValueChange = { newFullName = it },
+                        label = { Text("Full Name*") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("add_user_fullname_input")
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = newPhone,
+                        onValueChange = { newPhone = it },
+                        label = { Text("Phone Number*") },
+                        placeholder = { Text("e.g. 078xxxxxxx") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("add_user_phone_input")
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = newEmail,
+                        onValueChange = { newEmail = it },
+                        label = { Text("Email Address (Optional)") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("add_user_email_input")
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = newPass,
+                        onValueChange = { newPass = it },
+                        label = { Text("Password*") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("add_user_pass_input")
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text("Account Role*", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = selectedRole == UserRole.USER,
+                            onClick = { selectedRole = UserRole.USER }
+                        )
+                        Text("Member / Standard User", fontSize = 13.sp)
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = selectedRole == UserRole.ADMIN,
+                            onClick = { selectedRole = UserRole.ADMIN }
+                        )
+                        Text("Administrator (Full Admin Access 👑)", fontSize = 13.sp, fontWeight = FontWeight.SemiBold, color = OrangeWarning)
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            if (newFullName.isNotBlank() && newPhone.isNotBlank() && newPass.isNotBlank()) {
+                                onAddNewUserOrAdmin(newFullName, newPhone, newEmail, newPass, selectedRole)
+                                showAddUserDialog = false
+                            }
+                        },
+                        enabled = newFullName.isNotBlank() && newPhone.isNotBlank() && newPass.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(containerColor = BentoPrimaryBlue),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("confirm_create_user_btn")
+                    ) {
+                        Text(text = "Create ${selectedRole.name} Account 🎉", fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -360,8 +526,143 @@ fun AdminPanelScreen(
             }
         }
 
+        // Pending Deposit Requests Section
+        item {
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "📥 Pending Deposit Verifications (${pendingDepositRequests.size})",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
+                    letterSpacing = (-0.3).sp
+                )
+                if (pendingDepositRequests.isNotEmpty()) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = GoldLight
+                    ) {
+                        Text("Action Required", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = NavyDark, modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp))
+                    }
+                }
+            }
+        }
+
+        if (pendingDepositRequests.isEmpty()) {
+            item {
+                Text(text = "No pending deposit verification requests.", color = TextSecondary, fontSize = 12.sp)
+            }
+        } else {
+            items(pendingDepositRequests) { req ->
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = BentoCardBg),
+                    border = BorderStroke(1.dp, GoldAccent)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = "Deposit Request #${req.id}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = BentoPrimaryBlue)
+                                Text(text = "User ID: ${req.userId}", fontSize = 11.sp, color = TextSecondary)
+                                Text(text = req.paymentMethod, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
+                            }
+                            Text(
+                                text = "%,d RWF".format(req.amount.toInt()),
+                                fontWeight = FontWeight.Bold,
+                                color = GreenSuccess,
+                                fontSize = 16.sp
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = GoldLight,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Tx ID / Ref: ${req.transactionId}",
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp,
+                                    color = NavyDark
+                                )
+                                val dateStr = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault()).format(Date(req.requestedAt))
+                                Text(text = dateStr, fontSize = 10.sp, color = TextSecondary)
+                            }
+                        }
+
+                        if (req.proofScreenshotUri.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clickable { selectedScreenshotForZoom = req.proofScreenshotUri }
+                                    .fillMaxWidth()
+                                    .background(Color(0xFFF8FAFC), shape = RoundedCornerShape(10.dp))
+                                    .padding(8.dp)
+                            ) {
+                                AsyncImage(
+                                    model = req.proofScreenshotUri,
+                                    contentDescription = "Proof Screenshot",
+                                    modifier = Modifier
+                                        .size(50.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text("Payment Proof Screenshot 📸", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = BluePrimary)
+                                    Text("Tap to zoom and view full receipt screenshot", fontSize = 10.sp, color = TextSecondary)
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Button(
+                                onClick = { onApproveDeposit(req.id) },
+                                colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f).testTag("approve_dep_${req.id}")
+                            ) {
+                                Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(text = "Approve & Credit 💰", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+
+                            Button(
+                                onClick = { onRejectDeposit(req.id, "Invalid Tx ID or Screenshot") },
+                                colors = ButtonDefaults.buttonColors(containerColor = RedDanger),
+                                shape = RoundedCornerShape(12.dp),
+                                modifier = Modifier.weight(1f).testTag("reject_dep_${req.id}")
+                            ) {
+                                Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(text = "Reject ❌", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Pending Withdrawal Requests Section
         item {
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = strings.pendingWithdrawals + " (${pendingWithdrawals.size})",
                 fontSize = 16.sp,
@@ -435,11 +736,17 @@ fun AdminPanelScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(text = "User Management & Funds Credit", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary, letterSpacing = (-0.3).sp)
-                Surface(
+
+                Button(
+                    onClick = { showAddUserDialog = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = BentoPrimaryBlue),
                     shape = RoundedCornerShape(12.dp),
-                    color = BlueLight
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                    modifier = Modifier.testTag("admin_add_user_btn")
                 ) {
-                    Text("${filteredUsers.size} users", fontSize = 11.sp, color = BluePrimary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                    Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Add User/Admin", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
@@ -502,18 +809,36 @@ fun AdminPanelScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(text = "ID: ${user.id.take(12)}...", fontSize = 11.sp, color = TextSecondary)
+                        Text(text = "ID: ${user.id.take(8)}...", fontSize = 11.sp, color = TextSecondary)
 
-                        Button(
-                            onClick = { selectedUserForFunds = user },
-                            colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
-                            shape = RoundedCornerShape(12.dp),
-                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
-                            modifier = Modifier.testTag("add_funds_user_${user.id}")
-                        ) {
-                            Icon(Icons.Default.AddCard, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("Add Funds 💵", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            OutlinedButton(
+                                onClick = {
+                                    val targetRole = if (user.role == UserRole.ADMIN) UserRole.USER else UserRole.ADMIN
+                                    onUpdateUserRole(user.id, targetRole)
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.testTag("toggle_role_${user.id}")
+                            ) {
+                                Text(
+                                    text = if (user.role == UserRole.ADMIN) "Make User" else "Make Admin 👑",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+
+                            Button(
+                                onClick = { selectedUserForFunds = user },
+                                colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                modifier = Modifier.testTag("add_funds_user_${user.id}")
+                            ) {
+                                Icon(Icons.Default.AddCard, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Add Funds 💵", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
                         }
                     }
                 }

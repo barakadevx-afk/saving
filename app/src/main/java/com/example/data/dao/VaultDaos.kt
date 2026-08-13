@@ -118,6 +118,27 @@ interface WithdrawalDao {
 }
 
 @Dao
+interface DepositRequestDao {
+    @Query("SELECT * FROM deposit_requests WHERE userId = :userId ORDER BY requestedAt DESC")
+    fun getDepositRequestsByUserId(userId: String): Flow<List<DepositRequestEntity>>
+
+    @Query("SELECT * FROM deposit_requests ORDER BY requestedAt DESC")
+    fun getAllDepositRequests(): Flow<List<DepositRequestEntity>>
+
+    @Query("SELECT * FROM deposit_requests WHERE status = 'PENDING' ORDER BY requestedAt DESC")
+    fun getPendingDepositRequests(): Flow<List<DepositRequestEntity>>
+
+    @Query("SELECT * FROM deposit_requests WHERE id = :id LIMIT 1")
+    suspend fun getDepositRequestById(id: String): DepositRequestEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDepositRequest(request: DepositRequestEntity)
+
+    @Query("UPDATE deposit_requests SET status = :status, processedAt = :processedAt, adminNote = :note WHERE id = :id")
+    suspend fun updateDepositRequestStatus(id: String, status: TransactionStatus, processedAt: Long, note: String? = null)
+}
+
+@Dao
 interface AdminDao {
     @Query("SELECT * FROM admin_config WHERE id = 1 LIMIT 1")
     fun getAdminConfigFlow(): Flow<AdminConfigEntity?>
