@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "Baraka Savings Vault"
+rootProject.name = "FUTURE SMART CAPITAL"
 
 include(":app")

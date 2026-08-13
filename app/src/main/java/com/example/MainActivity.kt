@@ -35,8 +35,22 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        com.example.notification.NotificationHelper.createNotificationChannel(this)
         setContent {
             BarakaVaultTheme {
+                // Request Notification Permission on Android 13+
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
+                        contract = androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+                        onResult = { isGranted ->
+                            android.util.Log.d("MainActivity", "Notification Permission Granted: $isGranted")
+                        }
+                    )
+                    LaunchedEffect(Unit) {
+                        permissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                }
+
                 BarakaVaultApp()
             }
         }
@@ -49,6 +63,7 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
     val currentWallet by viewModel.currentWallet.collectAsStateWithLifecycle()
     val userCycles by viewModel.userCycles.collectAsStateWithLifecycle()
     val userTransactions by viewModel.userTransactions.collectAsStateWithLifecycle()
+    val referredUsers by viewModel.referredUsers.collectAsStateWithLifecycle()
     val adminConfig by viewModel.adminConfig.collectAsStateWithLifecycle()
     val pendingWithdrawals by viewModel.pendingWithdrawals.collectAsStateWithLifecycle()
     val allUsers by viewModel.allUsers.collectAsStateWithLifecycle()
@@ -59,6 +74,7 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
     val showDepositModal by viewModel.showDepositModal.collectAsStateWithLifecycle()
     val selectedDepositTier by viewModel.selectedDepositTier.collectAsStateWithLifecycle()
     val userMessage by viewModel.userMessage.collectAsStateWithLifecycle()
+    val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
 
     val strings = Translations.get(currentLanguage)
 
@@ -77,12 +93,12 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
     if (user == null) {
         LoginRegisterScreen(
             strings = strings,
-            onLogin = { email, pass -> viewModel.login(email, pass) },
-            onRegister = { email, phone, fullName, pass, role ->
-                viewModel.register(email, phone, fullName, pass, role)
+            onLogin = { phoneOrId, pass -> viewModel.login(phoneOrId, pass) },
+            onRegister = { phone, fullName, pass, role, refCode ->
+                viewModel.register(phone, fullName, pass, role, refCode)
             },
-            onDemoLoginUser = { viewModel.login("jean@barakavault.rw", "user123") },
-            onDemoLoginAdmin = { viewModel.login("admin@barakavault.rw", "admin123") }
+            onDemoLoginUser = { viewModel.login("0788123456", "user123") },
+            onDemoLoginAdmin = { viewModel.login("0792828727", "BARAKA@123!") }
         )
     } else {
         ModalNavigationDrawer(
@@ -182,6 +198,17 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                         modifier = Modifier.padding(horizontal = 12.dp).testTag("nav_withdraw")
                     )
 
+                    NavigationDrawerItem(
+                        icon = { Icon(Icons.Default.HelpOutline, contentDescription = null, tint = Color.White) },
+                        label = { Text("Help & FAQ", color = Color.White) },
+                        selected = activeTab == NavigationTab.FAQ,
+                        onClick = {
+                            viewModel.selectTab(NavigationTab.FAQ)
+                            coroutineScope.launch { drawerState.close() }
+                        },
+                        modifier = Modifier.padding(horizontal = 12.dp).testTag("nav_faq")
+                    )
+
                     if (user.role == UserRole.ADMIN) {
                         NavigationDrawerItem(
                             icon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = null, tint = GoldAccent) },
@@ -219,7 +246,9 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                         userName = user.fullName,
                         onLanguageChange = { lang -> viewModel.setLanguage(lang) },
                         onToggleRole = { viewModel.toggleRole() },
-                        onOpenNav = { coroutineScope.launch { drawerState.open() } }
+                        onOpenNav = { coroutineScope.launch { drawerState.open() } },
+                        onRefresh = { viewModel.refreshData() },
+                        isLoading = isLoading
                     )
                 },
                 snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -316,10 +345,13 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                                 transactions = userTransactions,
                                 adminConfig = adminConfig,
                                 strings = strings,
+                                referredUsers = referredUsers,
+                                isLoading = isLoading,
                                 onOpenDepositModal = { tierId -> viewModel.openDepositModal(tierId) },
                                 onFastForward = { viewModel.triggerCycleWorkerFastForward() },
                                 onViewAllTransactions = { viewModel.selectTab(NavigationTab.TRANSACTIONS) },
-                                onWithdrawClick = { viewModel.selectTab(NavigationTab.WITHDRAW) }
+                                onWithdrawClick = { viewModel.selectTab(NavigationTab.WITHDRAW) },
+                                onFaqClick = { viewModel.selectTab(NavigationTab.FAQ) }
                             )
                         }
 
@@ -361,6 +393,13 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                             )
                         }
 
+                        NavigationTab.FAQ -> {
+                            FaqScreen(
+                                strings = strings,
+                                onNavigateToDeposit = { viewModel.openDepositModal("C") }
+                            )
+                        }
+
                         NavigationTab.ADMIN -> {
                             AdminPanelScreen(
                                 adminConfig = adminConfig,
@@ -371,7 +410,10 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                                 onApproveWithdrawal = { id -> viewModel.approveWithdrawal(id) },
                                 onRejectWithdrawal = { id -> viewModel.rejectWithdrawal(id) },
                                 onUpdateRates = { a, b, c, d -> viewModel.updateRates(a, b, c, d) },
-                                onTriggerSettlement = { viewModel.triggerCycleWorkerFastForward() }
+                                onTriggerSettlement = { viewModel.triggerCycleWorkerFastForward() },
+                                onAddFundsToUser = { targetUserId, amount, note ->
+                                    viewModel.addFundsToUser(targetUserId, amount, note)
+                                }
                             )
                         }
 
@@ -383,10 +425,13 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                                 transactions = userTransactions,
                                 adminConfig = adminConfig,
                                 strings = strings,
+                                referredUsers = referredUsers,
+                                isLoading = isLoading,
                                 onOpenDepositModal = { tierId -> viewModel.openDepositModal(tierId) },
                                 onFastForward = { viewModel.triggerCycleWorkerFastForward() },
                                 onViewAllTransactions = { viewModel.selectTab(NavigationTab.TRANSACTIONS) },
-                                onWithdrawClick = { viewModel.selectTab(NavigationTab.WITHDRAW) }
+                                onWithdrawClick = { viewModel.selectTab(NavigationTab.WITHDRAW) },
+                                onFaqClick = { viewModel.selectTab(NavigationTab.FAQ) }
                             )
                         }
                     }

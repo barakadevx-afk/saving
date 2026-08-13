@@ -9,6 +9,9 @@ interface UserDao {
     @Query("SELECT * FROM users WHERE email = :email LIMIT 1")
     suspend fun getUserByEmail(email: String): UserEntity?
 
+    @Query("SELECT * FROM users WHERE phone = :identifier OR email = :identifier OR REPLACE(phone, ' ', '') = REPLACE(:identifier, ' ', '') LIMIT 1")
+    suspend fun getUserByPhoneOrEmail(identifier: String): UserEntity?
+
     @Query("SELECT * FROM users WHERE id = :id LIMIT 1")
     fun getUserByIdFlow(id: String): Flow<UserEntity?>
 
@@ -17,6 +20,18 @@ interface UserDao {
 
     @Query("SELECT * FROM users ORDER BY createdAt DESC")
     fun getAllUsers(): Flow<List<UserEntity>>
+
+    @Query("SELECT * FROM users WHERE referredBy = :referralCode ORDER BY createdAt DESC")
+    fun getReferredUsersByCodeFlow(referralCode: String): Flow<List<UserEntity>>
+
+    @Query("SELECT * FROM users WHERE referredBy = :referralCode")
+    suspend fun getReferredUsersListByCode(referralCode: String): List<UserEntity>
+
+    @Query("SELECT COUNT(*) FROM users WHERE referredBy = :referralCode")
+    fun getReferredCountFlow(referralCode: String): Flow<Int>
+
+    @Query("SELECT * FROM users WHERE referralCode = :code LIMIT 1")
+    suspend fun getUserByReferralCode(code: String): UserEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUser(user: UserEntity)
@@ -39,14 +54,15 @@ interface WalletDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWallet(wallet: WalletEntity)
 
-    @Query("UPDATE wallets SET availableBalance = :available, lockedBalance = :locked, totalEarned = :earned, totalDeposited = :deposited, totalWithdrawn = :withdrawn WHERE userId = :userId")
+    @Query("UPDATE wallets SET availableBalance = :available, lockedBalance = :locked, totalEarned = :earned, totalDeposited = :deposited, totalWithdrawn = :withdrawn, referralBonus = :referralBonus WHERE userId = :userId")
     suspend fun updateWalletBalances(
         userId: String,
         available: Double,
         locked: Double,
         earned: Double,
         deposited: Double,
-        withdrawn: Double
+        withdrawn: Double,
+        referralBonus: Double
     )
 }
 

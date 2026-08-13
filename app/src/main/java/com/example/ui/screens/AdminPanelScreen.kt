@@ -22,6 +22,13 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.window.Dialog
+import com.example.ui.components.launchPhoneCallIntent
+import com.example.ui.components.launchWhatsAppIntent
+
 @Composable
 fun AdminPanelScreen(
     adminConfig: AdminConfigEntity?,
@@ -32,12 +39,131 @@ fun AdminPanelScreen(
     onApproveWithdrawal: (String) -> Unit,
     onRejectWithdrawal: (String) -> Unit,
     onUpdateRates: (rateA: Double, rateB: Double, rateC: Double, rateD: Double) -> Unit,
-    onTriggerSettlement: () -> Unit
+    onTriggerSettlement: () -> Unit,
+    onAddFundsToUser: (userId: String, amount: Double, note: String) -> Unit = { _, _, _ -> }
 ) {
+    val context = LocalContext.current
     var rateAStr by remember { mutableStateOf("%.2f".format((adminConfig?.rateTierA ?: 0.02) * 100)) }
     var rateBStr by remember { mutableStateOf("%.2f".format((adminConfig?.rateTierB ?: 0.02) * 100)) }
     var rateCStr by remember { mutableStateOf("%.2f".format((adminConfig?.rateTierC ?: 0.02) * 100)) }
     var rateDStr by remember { mutableStateOf("%.2f".format((adminConfig?.rateTierD ?: 0.02) * 100)) }
+
+    var userQuery by remember { mutableStateOf("") }
+    var selectedUserForFunds by remember { mutableStateOf<UserEntity?>(null) }
+
+    val filteredUsers = allUsers.filter {
+        it.fullName.contains(userQuery, ignoreCase = true) ||
+        it.email.contains(userQuery, ignoreCase = true) ||
+        it.phone.contains(userQuery, ignoreCase = true)
+    }
+
+    if (selectedUserForFunds != null) {
+        val user = selectedUserForFunds!!
+        var addAmountText by remember { mutableStateOf("6000") }
+        var noteText by remember { mutableStateOf("MoMo Code 1799283 Payment Verified") }
+
+        Dialog(onDismissRequest = { selectedUserForFunds = null }) {
+            Card(
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = LightSurface)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(20.dp)
+                        .fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "Add Funds to User 💵",
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        IconButton(onClick = { selectedUserForFunds = null }) {
+                            Icon(Icons.Default.Close, contentDescription = "Close")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "User: ${user.fullName} (${user.phone})",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = BentoPrimaryBlue
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Text(text = "Quick Amount Options:", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf("6000", "10000", "15000", "45000").forEach { preset ->
+                            FilterChip(
+                                selected = addAmountText == preset,
+                                onClick = { addAmountText = preset },
+                                label = { Text("${preset.toInt() / 1000}k RWF", fontSize = 11.sp) }
+                            )
+                        }
+                    }
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        listOf("100000", "500000", "1000000").forEach { preset ->
+                            FilterChip(
+                                selected = addAmountText == preset,
+                                onClick = { addAmountText = preset },
+                                label = { Text("${preset.toInt() / 1000}k RWF", fontSize = 11.sp) }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    OutlinedTextField(
+                        value = addAmountText,
+                        onValueChange = { addAmountText = it.filter { c -> c.isDigit() } },
+                        label = { Text("Deposit Amount (6,000 - 1,000,000 RWF)") },
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("admin_add_amount_input"),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    OutlinedTextField(
+                        value = noteText,
+                        onValueChange = { noteText = it },
+                        label = { Text("Verification Note / Reference") },
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("admin_add_note_input"),
+                        singleLine = true
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            val amt = addAmountText.toDoubleOrNull() ?: 0.0
+                            if (amt >= 1.0) {
+                                onAddFundsToUser(user.id, amt, noteText)
+                                selectedUserForFunds = null
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("admin_confirm_add_funds_btn")
+                    ) {
+                        Text(text = "Credit Balance Now 💰", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -61,8 +187,8 @@ fun AdminPanelScreen(
                         letterSpacing = (-0.5).sp
                     )
                     Text(
-                        text = "Configure reward rates, approve payouts, and view audit logs.",
-                        fontSize = 12.sp,
+                        text = "FUTURE SMART CAPITAL - Payment Code 1799283 Verification & User Management",
+                        fontSize = 11.sp,
                         color = TextSecondary,
                         fontWeight = FontWeight.Medium
                     )
@@ -75,6 +201,52 @@ fun AdminPanelScreen(
                     modifier = Modifier.testTag("admin_settlement_trigger_btn")
                 ) {
                     Text(text = "Run Settlement ⚡", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        // Admin Merchant Code Info Banner
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = GoldLight),
+                border = BorderStroke(1.dp, GoldAccent)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "💳 Payment Merchant Codes: 1799283 (Alt: 1799273)",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        color = NavyDark
+                    )
+                    Text(
+                        text = "Admin Contact & WhatsApp: 0792828727",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Deposit Limits: Minimum 6,000 RWF (6k) | Maximum 1,000,000 RWF (1M)",
+                        fontSize = 11.sp,
+                        color = TextSecondary
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = { launchPhoneCallIntent(context, "0792828727") },
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Call Admin 📞", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                        Button(
+                            onClick = { launchWhatsAppIntent(context, "250792828727", "Admin Verification Panel: Checking payments for code 1799283") },
+                            colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("WhatsApp Admin 💬", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
         }
@@ -254,40 +426,95 @@ fun AdminPanelScreen(
             }
         }
 
-        // Users Management List
+        // Users Management List with Search and Add Funds
         item {
             Spacer(modifier = Modifier.height(8.dp))
-            Text(text = "Registered Users List", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary, letterSpacing = (-0.3).sp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "User Management & Funds Credit", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextPrimary, letterSpacing = (-0.3).sp)
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = BlueLight
+                ) {
+                    Text("${filteredUsers.size} users", fontSize = 11.sp, color = BluePrimary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = userQuery,
+                onValueChange = { userQuery = it },
+                label = { Text("Search users by name, email, or phone...") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = "Search") },
+                trailingIcon = {
+                    if (userQuery.isNotEmpty()) {
+                        IconButton(onClick = { userQuery = "" }) {
+                            Icon(Icons.Default.Close, contentDescription = "Clear")
+                        }
+                    }
+                },
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().testTag("user_search_input"),
+                singleLine = true
+            )
         }
 
-        items(allUsers) { user ->
+        items(filteredUsers) { user ->
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = BentoCardBg),
                 border = BorderStroke(1.dp, BentoBorder)
             ) {
-                Row(
-                    modifier = Modifier.padding(16.dp).fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(text = user.fullName, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextPrimary)
-                        Text(text = "${user.email} | ${user.phone}", fontSize = 11.sp, color = TextSecondary)
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(text = user.fullName, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextPrimary)
+                            Text(text = "${user.email} | ${user.phone}", fontSize = 11.sp, color = TextSecondary)
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (user.role == UserRole.ADMIN) GoldLight else BentoHeroCardBg
+                        ) {
+                            Text(
+                                text = user.role.name,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (user.role == UserRole.ADMIN) OrangeWarning else BentoHeroText,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                            )
+                        }
                     }
 
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (user.role == UserRole.ADMIN) GoldLight else BentoHeroCardBg
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = user.role.name,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (user.role == UserRole.ADMIN) OrangeWarning else BentoHeroText,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                        )
+                        Text(text = "ID: ${user.id.take(12)}...", fontSize = 11.sp, color = TextSecondary)
+
+                        Button(
+                            onClick = { selectedUserForFunds = user },
+                            colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                            modifier = Modifier.testTag("add_funds_user_${user.id}")
+                        ) {
+                            Icon(Icons.Default.AddCard, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Add Funds 💵", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
                     }
                 }
             }

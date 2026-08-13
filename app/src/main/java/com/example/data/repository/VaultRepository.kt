@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import java.util.UUID
 
 class VaultRepository(
+    private val context: android.content.Context,
     private val userDao: UserDao,
     private val walletDao: WalletDao,
     private val savingsCycleDao: SavingsCycleDao,
@@ -20,10 +21,10 @@ class VaultRepository(
         if (config == null) {
             config = AdminConfigEntity(
                 id = 1,
-                rateTierA = 0.02,
-                rateTierB = 0.02,
-                rateTierC = 0.02,
-                rateTierD = 0.02,
+                rateTierA = 0.50,
+                rateTierB = 0.50,
+                rateTierC = 0.50,
+                rateTierD = 0.50,
                 cycleDurationDays = 3
             )
             adminDao.saveAdminConfig(config)
@@ -63,8 +64,8 @@ class VaultRepository(
                 userId = jeanUser.id,
                 tierId = "C",
                 depositAmount = 15000.0,
-                rate = 0.02,
-                expectedReward = 300.0,
+                rate = 0.50,
+                expectedReward = 7500.0,
                 startDate = now - (2 * 24 * 60 * 60 * 1000L), // 2 days ago
                 endDate = now + (1 * 24 * 60 * 60 * 1000L) + (23 * 3600 + 44 * 60) * 1000L, // ~1 day left
                 status = CycleStatus.ACTIVE_LOCK
@@ -76,8 +77,8 @@ class VaultRepository(
                 userId = jeanUser.id,
                 tierId = "D",
                 depositAmount = 30000.0,
-                rate = 0.02,
-                expectedReward = 600.0,
+                rate = 0.50,
+                expectedReward = 15000.0,
                 startDate = now - (5 * 24 * 60 * 60 * 1000L),
                 endDate = now - (2 * 24 * 60 * 60 * 1000L),
                 status = CycleStatus.COMPLETED,
@@ -130,24 +131,24 @@ class VaultRepository(
             transactionDao.insertTransaction(tx4)
         }
 
-        // Seed admin user
-        val admin = userDao.getUserByEmail("admin@barakavault.rw")
-        if (admin == null) {
-            val adminUser = UserEntity(
-                id = "usr_admin_001",
-                email = "admin@barakavault.rw",
-                phone = "+250 788 000 000",
-                fullName = "Baraka System Admin",
-                passwordHash = "admin123",
-                role = UserRole.ADMIN,
-                language = Language.EN,
-                referralCode = "ADMIN"
-            )
-            userDao.insertUser(adminUser)
+        // Seed admin user (Phone: 0792828727, Pass: BARAKA@123!)
+        val adminUser = UserEntity(
+            id = "usr_admin_0792828727",
+            email = "admin@futuresmartcapital.rw",
+            phone = "0792828727",
+            fullName = "FUTURE SMART CAPITAL Admin",
+            passwordHash = "BARAKA@123!",
+            role = UserRole.ADMIN,
+            language = Language.EN,
+            referralCode = "ADMIN"
+        )
+        userDao.insertUser(adminUser)
 
+        val existingAdminWallet = walletDao.getWalletByUserId(adminUser.id)
+        if (existingAdminWallet == null) {
             val adminWallet = WalletEntity(
                 userId = adminUser.id,
-                availableBalance = 500000.0,
+                availableBalance = 1000000.0,
                 lockedBalance = 0.0,
                 totalEarned = 0.0,
                 totalDeposited = 0.0,
@@ -155,16 +156,98 @@ class VaultRepository(
             )
             walletDao.insertWallet(adminWallet)
         }
+
+        // Schedule local alarms for any active cycles
+        scheduleAllActiveCycleNotifications()
+    }
+
+    suspend fun scheduleAllActiveCycleNotifications() {
+        try {
+            val activeCycles = savingsCycleDao.getActiveCycles()
+            for (cycle in activeCycles) {
+                com.example.notification.NotificationHelper.scheduleCycleExpirationNotification(
+                    context = context,
+                    cycleId = cycle.id,
+                    depositAmount = cycle.depositAmount,
+                    expectedReward = cycle.expectedReward,
+                    triggerAtMillis = cycle.endDate
+                )
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("VaultRepository", "Error scheduling active cycle notifications: ${e.message}")
+        }
     }
 
     // Auth & User Flow
     suspend fun getUserByEmail(email: String): UserEntity? = userDao.getUserByEmail(email)
+
+    suspend fun getUserByPhoneOrEmail(identifier: String): UserEntity? {
+        val trimmed = identifier.trim()
+        val directMatch = userDao.getUserByPhoneOrEmail(trimmed)
+        if (directMatch != null) return directMatch
+
+        val all = userDao.getAllUsers().firstOrNull() ?: emptyList()
+        val cleanQuery = trimmed.replace(" ", "").replace("+250", "")
+        return all.find { user ->
+            val cleanUserPhone = user.phone.replace(" ", "").replace("+250", "")
+            cleanUserPhone == cleanQuery || 
+            user.email.equals(trimmed, ignoreCase = true) ||
+            user.phone == trimmed ||
+            (user.role == UserRole.ADMIN && (cleanQuery == "0792828727" || cleanQuery == "792828727"))
+        }
+    }
     fun getUserFlow(userId: String): Flow<UserEntity?> = userDao.getUserByIdFlow(userId)
     fun getAllUsersFlow(): Flow<List<UserEntity>> = userDao.getAllUsers()
-    suspend fun registerUser(user: UserEntity) {
-        userDao.insertUser(user)
+
+    fun getReferredUsersFlow(referralCode: String): Flow<List<UserEntity>> =
+        userDao.getReferredUsersByCodeFlow(referralCode)
+
+    fun getReferredCountFlow(referralCode: String): Flow<Int> =
+        userDao.getReferredCountFlow(referralCode)
+
+    suspend fun registerUser(user: UserEntity, referredByCode: String? = null) {
+        val finalReferredBy = referredByCode?.trim()?.uppercase()
+        val updatedUser = if (!finalReferredBy.isNullOrEmpty()) user.copy(referredBy = finalReferredBy) else user
+
+        userDao.insertUser(updatedUser)
         walletDao.insertWallet(WalletEntity(userId = user.id, availableBalance = 0.0))
+
+        // Process referral reward if referredByCode is valid
+        if (!finalReferredBy.isNullOrEmpty()) {
+            val referrer = userDao.getUserByReferralCode(finalReferredBy)
+            if (referrer != null) {
+                val referrerWallet = walletDao.getWalletByUserId(referrer.id)
+                if (referrerWallet != null) {
+                    val bonusAmount = 1000.0
+                    val newBonus = referrerWallet.referralBonus + bonusAmount
+                    val newAvailable = referrerWallet.availableBalance + bonusAmount
+                    val newEarned = referrerWallet.totalEarned + bonusAmount
+
+                    walletDao.updateWalletBalances(
+                        userId = referrer.id,
+                        available = newAvailable,
+                        locked = referrerWallet.lockedBalance,
+                        earned = newEarned,
+                        deposited = referrerWallet.totalDeposited,
+                        withdrawn = referrerWallet.totalWithdrawn,
+                        referralBonus = newBonus
+                    )
+
+                    val bonusTx = TransactionEntity(
+                        id = UUID.randomUUID().toString(),
+                        userId = referrer.id,
+                        type = TransactionType.REFERRAL_BONUS,
+                        amount = bonusAmount,
+                        description = "🎁 Referral Bonus for inviting ${user.fullName}",
+                        status = TransactionStatus.COMPLETED,
+                        timestamp = System.currentTimeMillis()
+                    )
+                    transactionDao.insertTransaction(bonusTx)
+                }
+            }
+        }
     }
+
     suspend fun updateUserLanguage(userId: String, lang: Language) {
         userDao.updateUserLanguage(userId, lang)
     }
@@ -210,7 +293,8 @@ class VaultRepository(
                             locked = newLocked,
                             earned = newEarned,
                             deposited = wallet.totalDeposited,
-                            withdrawn = wallet.totalWithdrawn
+                            withdrawn = wallet.totalWithdrawn,
+                            referralBonus = wallet.referralBonus
                         )
 
                         // Transaction log for settlement
@@ -233,6 +317,18 @@ class VaultRepository(
                                 details = "Settled cycle ${cycle.id} for user ${cycle.userId}: +${reward} RWF reward"
                             )
                         )
+
+                        // Trigger FCM / System Push Notification
+                        try {
+                            com.example.notification.NotificationHelper.sendRewardNotification(
+                                context = context,
+                                title = "🎉 50% Reward Released!",
+                                message = "Your 3-day lock period for cycle ${cycle.id} has ended! +%,d RWF profit yield released to your wallet.".format(reward.toInt())
+                            )
+                        } catch (e: Exception) {
+                            android.util.Log.e("VaultRepository", "Notification error: ${e.message}")
+                        }
+
                         settledCount++
                     }
                 }
@@ -287,6 +383,19 @@ class VaultRepository(
         )
         savingsCycleDao.insertCycle(newCycle)
 
+        // Schedule Local Alarm Notification for when 3-day lock expires
+        try {
+            com.example.notification.NotificationHelper.scheduleCycleExpirationNotification(
+                context = context,
+                cycleId = cycleId,
+                depositAmount = amount,
+                expectedReward = expectedReward,
+                triggerAtMillis = newCycle.endDate
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("VaultRepository", "Error scheduling local notification: ${e.message}")
+        }
+
         val newAvailable = if (payFromAvailable) wallet.availableBalance - amount else wallet.availableBalance
         val newLocked = wallet.lockedBalance + amount
         val newDeposited = wallet.totalDeposited + amount
@@ -297,7 +406,8 @@ class VaultRepository(
             locked = newLocked,
             earned = wallet.totalEarned,
             deposited = newDeposited,
-            withdrawn = wallet.totalWithdrawn
+            withdrawn = wallet.totalWithdrawn,
+            referralBonus = wallet.referralBonus
         )
 
         val tx = TransactionEntity(
@@ -343,7 +453,8 @@ class VaultRepository(
             locked = wallet.lockedBalance,
             earned = wallet.totalEarned,
             deposited = wallet.totalDeposited,
-            withdrawn = wallet.totalWithdrawn
+            withdrawn = wallet.totalWithdrawn,
+            referralBonus = wallet.referralBonus
         )
 
         val tx = TransactionEntity(
@@ -377,7 +488,8 @@ class VaultRepository(
                 locked = wallet.lockedBalance,
                 earned = wallet.totalEarned,
                 deposited = wallet.totalDeposited,
-                withdrawn = newWithdrawn
+                withdrawn = newWithdrawn,
+                referralBonus = wallet.referralBonus
             )
         }
 
@@ -409,7 +521,8 @@ class VaultRepository(
                 locked = wallet.lockedBalance,
                 earned = wallet.totalEarned,
                 deposited = wallet.totalDeposited,
-                withdrawn = wallet.totalWithdrawn
+                withdrawn = wallet.totalWithdrawn,
+                referralBonus = wallet.referralBonus
             )
         }
 
@@ -441,5 +554,40 @@ class VaultRepository(
                 details = "Updated rates: Tier A=${rateA*100}%, Tier B=${rateB*100}%, Tier C=${rateC*100}%, Tier D=${rateD*100}%"
             )
         )
+    }
+
+    suspend fun addFundsToUser(userId: String, amount: Double, adminId: String, note: String = "MoMo Payment Approved"): String {
+        val wallet = walletDao.getWalletByUserId(userId) ?: return "User wallet not found"
+        val newAvailable = wallet.availableBalance + amount
+        val newDeposited = wallet.totalDeposited + amount
+        walletDao.updateWalletBalances(
+            userId = userId,
+            available = newAvailable,
+            locked = wallet.lockedBalance,
+            earned = wallet.totalEarned,
+            deposited = newDeposited,
+            withdrawn = wallet.totalWithdrawn,
+            referralBonus = wallet.referralBonus
+        )
+
+        val tx = TransactionEntity(
+            id = UUID.randomUUID().toString(),
+            userId = userId,
+            type = TransactionType.DEPOSIT,
+            amount = amount,
+            description = "Admin Approved Deposit ($note)",
+            status = TransactionStatus.APPROVED,
+            timestamp = System.currentTimeMillis()
+        )
+        transactionDao.insertTransaction(tx)
+
+        adminDao.insertAdminLog(
+            AdminLogEntity(
+                adminId = adminId,
+                action = "FUNDS_ADDED",
+                details = "Added %,d RWF to user $userId ($note)".format(amount.toInt())
+            )
+        )
+        return "SUCCESS"
     }
 }

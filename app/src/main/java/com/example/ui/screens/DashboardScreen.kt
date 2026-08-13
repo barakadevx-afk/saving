@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,11 +39,19 @@ fun DashboardScreen(
     transactions: List<TransactionEntity>,
     adminConfig: AdminConfigEntity?,
     strings: AppStrings,
+    referredUsers: List<UserEntity> = emptyList(),
+    isLoading: Boolean = false,
     onOpenDepositModal: (String) -> Unit,
     onFastForward: () -> Unit,
     onViewAllTransactions: () -> Unit,
-    onWithdrawClick: () -> Unit
+    onWithdrawClick: () -> Unit,
+    onFaqClick: () -> Unit = {}
 ) {
+    if (isLoading) {
+        BentoDashboardSkeletonScreen()
+        return
+    }
+
     val available = wallet?.availableBalance ?: 12450.0
     val locked = wallet?.lockedBalance ?: 45000.0
     val earned = wallet?.totalEarned ?: 6750.0
@@ -188,6 +197,60 @@ fun DashboardScreen(
                     strings = strings,
                     onFastForward = onFastForward
                 )
+            }
+        }
+
+        // Referral Program & Invite Friends Bento Card
+        item {
+            ReferralProgramCard(
+                user = user,
+                referralBonus = referralBonus,
+                referredUsers = referredUsers
+            )
+        }
+
+        // Quick FAQ & Help Banner Card
+        item {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onFaqClick() }
+                    .testTag("dashboard_faq_banner"),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = GoldLight),
+                border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.5f))
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .background(GoldAccent, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.HelpOutline, contentDescription = null, tint = NavyDark, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = "Have questions about the 3-day cycle?",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "Read our FAQ guide on deposit limits, lock periods & verification.",
+                                fontSize = 11.sp,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = OrangeWarning)
+                }
             }
         }
 
@@ -497,6 +560,235 @@ fun TransactionItemRow(tx: TransactionEntity) {
                         TransactionStatus.REJECTED -> RedDanger
                     },
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun ReferralProgramCard(
+    user: UserEntity,
+    referralBonus: Double,
+    referredUsers: List<UserEntity>
+) {
+    val context = LocalContext.current
+    val referralLink = "https://futuresmartcapital.rw/ref/${user.referralCode}"
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = BentoCardBg),
+        border = BorderStroke(1.dp, BentoBorder)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(GoldLight, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.CardGiftcard,
+                            contentDescription = "Referral",
+                            tint = OrangeWarning,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Text(
+                            text = "🎁 Invite Friends & Earn 1,000 RWF",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Text(
+                            text = "Get 1,000 RWF instant bonus for every friend who joins!",
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Unique Referral Code & Link Box
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = BentoHeroCardBg,
+                border = BorderStroke(1.dp, BentoBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(
+                        text = "YOUR UNIQUE REFERRAL LINK:",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextSecondary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = referralLink,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = BentoPrimaryBlue
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                val clip = android.content.ClipData.newPlainText("Referral Link", referralLink)
+                                clipboard.setPrimaryClip(clip)
+                                android.widget.Toast.makeText(context, "Link copied to clipboard! 📋", android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.weight(1f).testTag("copy_ref_link_btn"),
+                            colors = ButtonDefaults.buttonColors(containerColor = BentoPrimaryBlue),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Copy Link", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = {
+                                val shareIntent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(
+                                        android.content.Intent.EXTRA_TEXT,
+                                        "Join Future Smart Capital and earn guaranteed 50% profit in 3 days! Sign up with my link: $referralLink"
+                                    )
+                                }
+                                context.startActivity(android.content.Intent.createChooser(shareIntent, "Invite Friends via"))
+                            },
+                            modifier = Modifier.weight(1f).testTag("share_ref_link_btn"),
+                            colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Share Link", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Stats Summary
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                StatOverviewCard(
+                    title = "Friends Invited",
+                    value = "${referredUsers.size}",
+                    subtitle = "Successful Signups",
+                    icon = Icons.Default.Group,
+                    iconBgColor = BlueLight,
+                    iconTint = BluePrimary,
+                    modifier = Modifier.weight(1f)
+                )
+
+                StatOverviewCard(
+                    title = "Bonus Earned",
+                    value = "%,d RWF".format(referralBonus.toInt()),
+                    subtitle = "Credited to Wallet",
+                    icon = Icons.Default.MonetizationOn,
+                    iconBgColor = GoldLight,
+                    iconTint = OrangeWarning,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // Invite History List
+            if (referredUsers.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Invited Friends History (${referredUsers.size})",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    referredUsers.forEach { friend ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(LightBackground, shape = RoundedCornerShape(12.dp))
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .background(BlueLight, CircleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = friend.fullName.take(1).uppercase(),
+                                        fontWeight = FontWeight.Bold,
+                                        color = BluePrimary,
+                                        fontSize = 14.sp
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Text(
+                                        text = friend.fullName,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary
+                                    )
+                                    Text(
+                                        text = "Phone: ${friend.phone}",
+                                        fontSize = 11.sp,
+                                        color = TextSecondary
+                                    )
+                                }
+                            }
+
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = GreenLight
+                            ) {
+                                Text(
+                                    text = "+1,000 RWF ⚡",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = GreenSuccess,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            } else {
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "💡 Tip: Share your link on WhatsApp, Facebook, or Telegram to earn your first 1,000 RWF bonus!",
+                    fontSize = 12.sp,
+                    color = TextSecondary,
+                    modifier = Modifier.padding(vertical = 4.dp)
                 )
             }
         }

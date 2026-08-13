@@ -31,6 +31,10 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
 import com.example.data.i18n.AppStrings
 import com.example.data.model.Language
 import com.example.data.model.SavingsCycleEntity
@@ -52,7 +56,9 @@ fun TopHeaderBar(
     userName: String,
     onLanguageChange: (Language) -> Unit,
     onToggleRole: () -> Unit,
-    onOpenNav: () -> Unit
+    onOpenNav: () -> Unit,
+    onRefresh: (() -> Unit)? = null,
+    isLoading: Boolean = false
 ) {
     var languageMenuExpanded by remember { mutableStateOf(false) }
 
@@ -173,6 +179,26 @@ fun TopHeaderBar(
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
+
+                if (onRefresh != null) {
+                    IconButton(
+                        onClick = onRefresh,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(CircleShape)
+                            .background(BentoBadgeGreyBg)
+                            .testTag("refresh_btn")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh Data",
+                            tint = BentoHeroText,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
 
                 // Role Switcher Badge
                 Box(
@@ -387,6 +413,186 @@ fun StatOverviewCard(
 }
 
 @Composable
+fun ThreeDayLockTimerComponent(
+    startDate: Long,
+    endDate: Long,
+    modifier: Modifier = Modifier
+) {
+    var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+    LaunchedEffect(endDate) {
+        while (currentTime < endDate) {
+            currentTime = System.currentTimeMillis()
+            kotlinx.coroutines.delay(1000L)
+        }
+    }
+
+    val totalDuration = (endDate - startDate).coerceAtLeast(1L)
+    val remaining = (endDate - currentTime).coerceAtLeast(0L)
+    val elapsed = (currentTime - startDate).coerceAtLeast(0L)
+    val progress = (elapsed.toFloat() / totalDuration.toFloat()).coerceIn(0f, 1f)
+
+    val days = remaining / (24 * 3600 * 1000)
+    val hours = (remaining % (24 * 3600 * 1000)) / (3600 * 1000)
+    val minutes = (remaining % (3600 * 1000)) / (60 * 1000)
+    val seconds = (remaining % (60 * 1000)) / 1000
+
+    Card(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = NavyDark),
+        border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.6f))
+    ) {
+        Column(
+            modifier = Modifier.padding(18.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(28.dp)
+                            .clip(CircleShape)
+                            .background(GoldAccent),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Timer,
+                            contentDescription = "Lock Timer",
+                            tint = NavyDark,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "3-DAY LOCK COUNTDOWN",
+                        color = GoldAccent,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.8.sp
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = GreenSuccess.copy(alpha = 0.2f),
+                    border = BorderStroke(1.dp, GreenSuccess.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        text = if (remaining > 0) "🔒 50% Yield Locked" else "✅ Yield Unlocked!",
+                        color = GreenSuccess,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Time Boxes Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TimeDigitBox(value = "%02d".format(days), label = "DAYS")
+                Text(":", color = GoldAccent, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                TimeDigitBox(value = "%02d".format(hours), label = "HOURS")
+                Text(":", color = GoldAccent, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                TimeDigitBox(value = "%02d".format(minutes), label = "MINS")
+                Text(":", color = GoldAccent, fontWeight = FontWeight.Black, fontSize = 20.sp)
+                TimeDigitBox(value = "%02d".format(seconds), label = "SECS")
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Live Animated Progress Bar
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "72-Hour Reward Progress",
+                        fontSize = 11.sp,
+                        color = Color.White.copy(alpha = 0.7f),
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = "${(progress * 100).toInt()}% Completed",
+                        fontSize = 11.sp,
+                        color = GoldAccent,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(6.dp))
+
+                LinearProgressIndicator(
+                    progress = { progress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(5.dp)),
+                    color = GoldAccent,
+                    trackColor = Color.White.copy(alpha = 0.15f)
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Milestone Labels
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text("Day 1: Locked 🔒", fontSize = 10.sp, color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
+                    Text("Day 2: Compounding ⚡", fontSize = 10.sp, color = Color.White.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)
+                    Text("Day 3: 50% Profit 🚀", fontSize = 10.sp, color = GoldAccent, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimeDigitBox(value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Surface(
+            shape = RoundedCornerShape(12.dp),
+            color = Color.White.copy(alpha = 0.1f),
+            border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(52.dp)
+                    .height(44.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = value,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    letterSpacing = (-0.5).sp
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = label,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color.White.copy(alpha = 0.6f)
+        )
+    }
+}
+
+@Composable
 fun ActiveCycleProgressCard(
     cycle: SavingsCycleEntity,
     strings: AppStrings,
@@ -394,18 +600,12 @@ fun ActiveCycleProgressCard(
 ) {
     val depositFormatted = "%,d RWF".format(cycle.depositAmount.toInt())
     val rewardFormatted = "%,d RWF".format(cycle.expectedReward.toInt())
-    val ratePct = "%.2f%%".format(cycle.rate * 100)
-
-    val now = System.currentTimeMillis()
-    val totalDuration = (cycle.endDate - cycle.startDate).coerceAtLeast(1L)
-    val remaining = (cycle.endDate - now).coerceAtLeast(0L)
-    val progress = 1f - (remaining.toFloat() / totalDuration.toFloat()).coerceIn(0f, 1f)
-
-    val remainingHours = (remaining / (1000 * 3600)).toInt()
-    val daysLeft = remainingHours / 24
+    val totalPayoutFormatted = "%,d RWF".format((cycle.depositAmount + cycle.expectedReward).toInt())
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("active_cycle_card"),
         shape = RoundedCornerShape(32.dp),
         colors = CardDefaults.cardColors(containerColor = BentoDarkCardBg),
         border = BorderStroke(
@@ -428,7 +628,7 @@ fun ActiveCycleProgressCard(
             ) {
                 Column {
                     Text(
-                        text = "ACTIVE CYCLE",
+                        text = "ACTIVE SAVINGS VAULT",
                         color = BentoDarkCardText.copy(alpha = 0.6f),
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
@@ -436,95 +636,11 @@ fun ActiveCycleProgressCard(
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
-                        text = "Tier $depositFormatted Savings",
+                        text = "$depositFormatted Principal Deposit",
                         color = Color.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold
                     )
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = BentoPrimaryBlue
-                ) {
-                    Text(
-                        text = "$daysLeft DAYS LEFT",
-                        color = Color.White,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            // Progress Bar Bento Style
-            Column(modifier = Modifier.fillMaxWidth()) {
-                LinearProgressIndicator(
-                    progress = { progress },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(RoundedCornerShape(4.dp)),
-                    color = BentoPrimaryBlue,
-                    trackColor = Color.White.copy(alpha = 0.15f)
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(
-                        text = "DAY 1: LOCKED",
-                        color = BentoDarkCardText.copy(alpha = 0.7f),
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "DAY 3: RELEASE",
-                        color = BentoPrimaryBlue,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-            HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
-            Spacer(modifier = Modifier.height(14.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Est. Reward: +$rewardFormatted ($ratePct)",
-                        color = Color.White,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .clip(CircleShape)
-                                .background(GreenSuccess)
-                        )
-                        Text(
-                            text = "PROCESSING IN TIME LOCK",
-                            color = GreenSuccess,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
                 }
 
                 Button(
@@ -535,6 +651,39 @@ fun ActiveCycleProgressCard(
                     modifier = Modifier.testTag("fast_forward_btn")
                 ) {
                     Text(text = "Fast Forward ⚡", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // 3-Day Lock Timer Component
+            ThreeDayLockTimerComponent(
+                startDate = cycle.startDate,
+                endDate = cycle.endDate
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+            HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
+            Spacer(modifier = Modifier.height(14.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Expected Payout: $totalPayoutFormatted",
+                        color = Color.White,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Principal ($depositFormatted) + 50% Profit (+$rewardFormatted)",
+                        color = GreenSuccess,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
         }
@@ -625,6 +774,27 @@ fun TierSelectionCard(
     }
 }
 
+fun launchPhoneCallIntent(context: Context, phoneNumber: String = "0792828727") {
+    try {
+        val intent = Intent(Intent.ACTION_DIAL).apply {
+            data = Uri.parse("tel:$phoneNumber")
+        }
+        context.startActivity(intent)
+    } catch (_: Exception) {}
+}
+
+fun launchWhatsAppIntent(
+    context: Context,
+    phoneNumber: String = "250792828727",
+    message: String = "Hello Admin, I have completed payment to code 1799283 for FUTURE SMART CAPITAL."
+) {
+    try {
+        val url = "https://wa.me/$phoneNumber?text=${Uri.encode(message)}"
+        val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+        context.startActivity(intent)
+    } catch (_: Exception) {}
+}
+
 @Composable
 fun DepositModalDialog(
     selectedTier: String,
@@ -633,6 +803,7 @@ fun DepositModalDialog(
     onDismiss: () -> Unit,
     onConfirmDeposit: (payFromAvailable: Boolean) -> Unit
 ) {
+    val context = LocalContext.current
     var payFromAvailable by remember { mutableStateOf(false) }
     var agreedDisclaimer by remember { mutableStateOf(false) }
 
@@ -696,17 +867,89 @@ fun DepositModalDialog(
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Payment Merchant Code Instructions Box
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = GoldLight,
+                    border = BorderStroke(1.dp, GoldAccent),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            text = "💳 Mobile Money Payment Code: 1799283",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = NavyDark
+                        )
+                        Text(
+                            text = "(Alternative code: 1799273)",
+                            fontSize = 11.sp,
+                            color = TextSecondary
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "📌 Min Deposit: 6,000 RWF | Max Deposit: 1,000,000 RWF",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextPrimary
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "After sending money, call Admin or message on WhatsApp to verify and add money to your account.",
+                            fontSize = 11.sp,
+                            color = TextSecondary,
+                            lineHeight = 15.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(
+                                onClick = { launchPhoneCallIntent(context, "0792828727") },
+                                modifier = Modifier.weight(1f).testTag("call_admin_btn"),
+                                border = BorderStroke(1.dp, BluePrimary),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                            ) {
+                                Icon(Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(14.dp), tint = BluePrimary)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Call Admin", fontSize = 11.sp, color = BluePrimary, fontWeight = FontWeight.Bold)
+                            }
+
+                            Button(
+                                onClick = {
+                                    launchWhatsAppIntent(
+                                        context = context,
+                                        phoneNumber = "250792828727",
+                                        message = "Hello Admin, I have paid %,d RWF to code 1799283 for FUTURE SMART CAPITAL. Please add money to my account.".format(amount.toInt())
+                                    )
+                                },
+                                modifier = Modifier.weight(1f).testTag("whatsapp_admin_btn"),
+                                colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                            ) {
+                                Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("WhatsApp", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Text(text = "Payment Source", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RadioButton(
                         selected = !payFromAvailable,
                         onClick = { payFromAvailable = false }
                     )
-                    Text(text = "Mobile Money / External Deposit", fontSize = 13.sp, color = TextPrimary)
+                    Text(text = "MoMo Code (1799283 / 1799273)", fontSize = 13.sp, color = TextPrimary)
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -721,13 +964,13 @@ fun DepositModalDialog(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 TransparencyNoticeBanner(
                     text = "Cycle duration is 3 days. Funds will be locked and cannot be withdrawn until completion."
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -745,7 +988,7 @@ fun DepositModalDialog(
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(14.dp))
 
                 Button(
                     onClick = { onConfirmDeposit(payFromAvailable) },
@@ -756,7 +999,7 @@ fun DepositModalDialog(
                     colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
                     shape = RoundedCornerShape(12.dp)
                 ) {
-                    Text(text = "Confirm & Lock Deposit 🔒", fontWeight = FontWeight.Bold)
+                    Text(text = "Confirm & Start 3-Day Cycle 🔒", fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -805,98 +1048,142 @@ fun TransparencyNoticeBanner(
 
 @Composable
 fun TransactionItemRow(tx: TransactionEntity) {
-    val dateStr = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()).format(Date(tx.timestamp))
-    val isPositive = tx.amount > 0
+    val dateStr = SimpleDateFormat("MMM dd, yyyy · HH:mm", Locale.getDefault()).format(Date(tx.timestamp))
+    var isExpanded by remember { mutableStateOf(false) }
 
-    Row(
+    // Color coding logic for amount label & badge
+    val amountColor = when {
+        tx.type == TransactionType.CYCLE_REWARD || tx.type == TransactionType.REFERRAL_BONUS -> GreenSuccess
+        tx.type == TransactionType.WITHDRAWAL -> Color(0xFFEF4444) // Bright Red
+        tx.type == TransactionType.DEPOSIT -> BentoPrimaryBlue
+        else -> TextPrimary
+    }
+
+    val amountPrefix = when {
+        tx.type == TransactionType.WITHDRAWAL -> "-"
+        tx.amount > 0 -> "+"
+        else -> ""
+    }
+
+    // Status icon and background color determination
+    val (statusIcon, iconBg, iconTint) = when (tx.status) {
+        TransactionStatus.PENDING -> Triple(Icons.Default.HourglassTop, GoldLight, OrangeWarning)
+        TransactionStatus.LOCKED -> Triple(Icons.Default.Lock, BentoHeroCardBg, BentoHeroText)
+        TransactionStatus.REJECTED -> Triple(Icons.Default.Cancel, BentoLockedBadgeBg, BentoLockedBadgeText)
+        TransactionStatus.COMPLETED, TransactionStatus.APPROVED -> when (tx.type) {
+            TransactionType.CYCLE_REWARD -> Triple(Icons.Default.AutoAwesome, BentoEarnedBadgeBg, BentoEarnedBadgeText)
+            TransactionType.REFERRAL_BONUS -> Triple(Icons.Default.CardGiftcard, GoldLight, OrangeWarning)
+            TransactionType.WITHDRAWAL -> Triple(Icons.Default.ArrowUpward, BentoLockedBadgeBg, BentoLockedBadgeText)
+            TransactionType.DEPOSIT -> Triple(Icons.Default.ArrowDownward, BentoHeroCardBg, BentoPrimaryBlue)
+            else -> Triple(Icons.Default.CheckCircle, BentoEarnedBadgeBg, BentoEarnedBadgeText)
+        }
+    }
+
+    // Status Pill Text and Style
+    val (statusText, statusPillBg, statusPillText) = when (tx.status) {
+        TransactionStatus.LOCKED -> Triple("🔒 3-DAY LOCK", BentoHeroCardBg, BentoHeroText)
+        TransactionStatus.PENDING -> Triple("⏳ PENDING", GoldLight, OrangeWarning)
+        TransactionStatus.COMPLETED -> Triple("✅ COMPLETED", BentoEarnedBadgeBg, BentoEarnedBadgeText)
+        TransactionStatus.APPROVED -> Triple("✅ APPROVED", BentoEarnedBadgeBg, BentoEarnedBadgeText)
+        TransactionStatus.REJECTED -> Triple("❌ REJECTED", BentoLockedBadgeBg, BentoLockedBadgeText)
+    }
+
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .background(BentoBg, shape = RoundedCornerShape(16.dp))
-            .border(1.dp, BentoBorder, shape = RoundedCornerShape(16.dp))
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+            .clickable { isExpanded = !isExpanded }
+            .testTag("tx_item_${tx.id}"),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = BentoCardBg),
+        border = BorderStroke(1.dp, BentoBorder)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(CircleShape)
-                    .background(
-                        when (tx.type) {
-                            TransactionType.DEPOSIT -> BentoHeroCardBg
-                            TransactionType.CYCLE_REWARD -> BentoEarnedBadgeBg
-                            TransactionType.WITHDRAWAL -> BentoLockedBadgeBg
-                            else -> GoldLight
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    Box(
+                        modifier = Modifier
+                            .size(42.dp)
+                            .clip(CircleShape)
+                            .background(iconBg),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = statusIcon,
+                            contentDescription = tx.type.name,
+                            tint = iconTint,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.width(12.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = tx.description,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = dateStr,
+                                fontSize = 11.sp,
+                                color = TextSecondary,
+                                fontWeight = FontWeight.Medium
+                            )
                         }
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = when (tx.type) {
-                        TransactionType.DEPOSIT -> Icons.Default.ArrowDownward
-                        TransactionType.CYCLE_REWARD -> Icons.Default.CardGiftcard
-                        TransactionType.WITHDRAWAL -> Icons.Default.ArrowUpward
-                        else -> Icons.Default.SwapHoriz
-                    },
-                    contentDescription = null,
-                    tint = when (tx.type) {
-                        TransactionType.DEPOSIT -> BentoPrimaryBlue
-                        TransactionType.CYCLE_REWARD -> BentoEarnedBadgeText
-                        TransactionType.WITHDRAWAL -> BentoLockedBadgeText
-                        else -> OrangeWarning
-                    },
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column {
-                Text(
-                    text = tx.description,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-                Text(
-                    text = dateStr,
-                    fontSize = 11.sp,
-                    color = TextSecondary,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
-
-        Column(horizontalAlignment = Alignment.End) {
-            Text(
-                text = (if (isPositive) "+" else "") + "%,d RWF".format(tx.amount.toInt()),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (isPositive) GreenSuccess else TextPrimary
-            )
-            Spacer(modifier = Modifier.height(2.dp))
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = when (tx.status) {
-                    TransactionStatus.COMPLETED, TransactionStatus.APPROVED -> BentoEarnedBadgeBg
-                    TransactionStatus.LOCKED -> BentoHeroCardBg
-                    TransactionStatus.PENDING -> GoldLight
-                    TransactionStatus.REJECTED -> BentoLockedBadgeBg
+                    }
                 }
-            ) {
-                Text(
-                    text = tx.status.name,
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = when (tx.status) {
-                        TransactionStatus.COMPLETED, TransactionStatus.APPROVED -> BentoEarnedBadgeText
-                        TransactionStatus.LOCKED -> BentoHeroText
-                        TransactionStatus.PENDING -> OrangeWarning
-                        TransactionStatus.REJECTED -> BentoLockedBadgeText
-                    },
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                )
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = "$amountPrefix%,d RWF".format(tx.amount.toInt()),
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = amountColor
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = statusPillBg
+                    ) {
+                        Text(
+                            text = statusText,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = statusPillText,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+            }
+
+            if (isExpanded) {
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = BentoBorder)
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text("Transaction Ref:", fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                        Text(tx.id.take(16).uppercase(), fontSize = 11.sp, color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                    }
+
+                    Column(horizontalAlignment = Alignment.End) {
+                        Text("Category:", fontSize = 10.sp, color = TextSecondary, fontWeight = FontWeight.Bold)
+                        Text(tx.type.name.replace("_", " "), fontSize = 11.sp, color = BentoPrimaryBlue, fontWeight = FontWeight.Bold)
+                    }
+                }
             }
         }
     }
