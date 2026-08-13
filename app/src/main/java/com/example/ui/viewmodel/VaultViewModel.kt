@@ -47,7 +47,8 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
             transactionDao = db.transactionDao(),
             withdrawalDao = db.withdrawalDao(),
             depositRequestDao = db.depositRequestDao(),
-            adminDao = db.adminDao()
+            adminDao = db.adminDao(),
+            announcementDao = db.announcementDao()
         )
         viewModelScope.launch {
             repository.seedDefaultDataIfEmpty()
@@ -109,6 +110,9 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val adminLogs: StateFlow<List<AdminLogEntity>> = repository.getAllAdminLogsFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val announcements: StateFlow<List<AnnouncementEntity>> = repository.getAllAnnouncements()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun selectTab(tab: NavigationTab) {
@@ -365,6 +369,39 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.updateUserRole(userId, newRole, admin.id)
             showMessage("User role updated to ${newRole.name}")
+        }
+    }
+
+    fun postAnnouncement(title: String, content: String, category: String = "NEWS", isImportant: Boolean = false) {
+        val admin = _currentUser.value ?: return
+        viewModelScope.launch {
+            repository.postAnnouncement(title, content, category, isImportant, admin.id)
+            showMessage("Announcement posted successfully! 📢")
+        }
+    }
+
+    fun deleteAnnouncement(id: String) {
+        val admin = _currentUser.value ?: return
+        viewModelScope.launch {
+            repository.deleteAnnouncement(id, admin.id)
+            showMessage("Announcement removed")
+        }
+    }
+
+    fun togglePlatformLock(isLocked: Boolean, lockNotice: String) {
+        val admin = _currentUser.value ?: return
+        viewModelScope.launch {
+            repository.togglePlatformLock(isLocked, lockNotice, admin.id)
+            val statusStr = if (isLocked) "LOCKED 🔒 (Active cycles continue earning yield!)" else "OPENED 🟢"
+            showMessage("Platform Deposit Status set to $statusStr")
+        }
+    }
+
+    fun updateAdminReserveFund(newReserveAmount: Double) {
+        val admin = _currentUser.value ?: return
+        viewModelScope.launch {
+            repository.updateAdminReserveFund(newReserveAmount, admin.id)
+            showMessage("System Capital Reserve updated to ${newReserveAmount} RWF 💰")
         }
     }
 }

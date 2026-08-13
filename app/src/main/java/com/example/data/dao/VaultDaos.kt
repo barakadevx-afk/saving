@@ -155,3 +155,15 @@ interface AdminDao {
     @Query("SELECT * FROM admin_logs ORDER BY timestamp DESC LIMIT 100")
     fun getAllAdminLogs(): Flow<List<AdminLogEntity>>
 }
+
+@Dao
+interface AnnouncementDao {
+    @Query("SELECT * FROM announcements ORDER BY timestamp DESC")
+    fun getAllAnnouncementsFlow(): Flow<List<AnnouncementEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAnnouncement(announcement: AnnouncementEntity)
+
+    @Query("DELETE FROM announcements WHERE id = :id")
+    suspend fun deleteAnnouncement(id: String)
+}

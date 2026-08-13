@@ -39,6 +39,7 @@ fun AdminPanelScreen(
     pendingDepositRequests: List<DepositRequestEntity> = emptyList(),
     allUsers: List<UserEntity>,
     adminLogs: List<AdminLogEntity>,
+    announcements: List<AnnouncementEntity> = emptyList(),
     strings: AppStrings,
     onApproveWithdrawal: (String) -> Unit,
     onRejectWithdrawal: (String) -> Unit,
@@ -48,13 +49,25 @@ fun AdminPanelScreen(
     onTriggerSettlement: () -> Unit,
     onAddFundsToUser: (userId: String, amount: Double, note: String) -> Unit = { _, _, _ -> },
     onAddNewUserOrAdmin: (fullName: String, phone: String, email: String, pass: String, role: UserRole) -> Unit = { _, _, _, _, _ -> },
-    onUpdateUserRole: (userId: String, newRole: UserRole) -> Unit = { _, _ -> }
+    onUpdateUserRole: (userId: String, newRole: UserRole) -> Unit = { _, _ -> },
+    onPostAnnouncement: (title: String, content: String, category: String, isImportant: Boolean) -> Unit = { _, _, _, _ -> },
+    onDeleteAnnouncement: (String) -> Unit = {},
+    onTogglePlatformLock: (isLocked: Boolean, notice: String) -> Unit = { _, _ -> },
+    onUpdateAdminReserveFund: (Double) -> Unit = {}
 ) {
     val context = LocalContext.current
     var rateAStr by remember { mutableStateOf("%.2f".format((adminConfig?.rateTierA ?: 0.02) * 100)) }
     var rateBStr by remember { mutableStateOf("%.2f".format((adminConfig?.rateTierB ?: 0.02) * 100)) }
     var rateCStr by remember { mutableStateOf("%.2f".format((adminConfig?.rateTierC ?: 0.02) * 100)) }
     var rateDStr by remember { mutableStateOf("%.2f".format((adminConfig?.rateTierD ?: 0.02) * 100)) }
+
+    var announcementTitle by remember { mutableStateOf("") }
+    var announcementContent by remember { mutableStateOf("") }
+    var announcementCategory by remember { mutableStateOf("NEWS") }
+    var isAnnouncementUrgent by remember { mutableStateOf(false) }
+
+    var lockNoticeText by remember { mutableStateOf(adminConfig?.lockNotice ?: "SFC Platform deposits are temporarily scheduled for maintenance. Active savings cycles continue earning yields as normal!") }
+    var reserveFundText by remember { mutableStateOf("%.0f".format(adminConfig?.adminReserveFund ?: 20000000.0)) }
 
     var userQuery by remember { mutableStateOf("") }
     var selectedUserForFunds by remember { mutableStateOf<UserEntity?>(null) }
@@ -443,6 +456,312 @@ fun AdminPanelScreen(
                         Text(text = "Pending Withdrawals", fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(text = "${pendingWithdrawals.size}", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = OrangeWarning, letterSpacing = (-0.5).sp)
+                    }
+                }
+            }
+        }
+
+        // Admin Website / Platform Lock Controls Card
+        item {
+            val isLocked = adminConfig?.isPlatformLocked == true
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isLocked) Color(0xFFFEF2F2) else BentoCardBg
+                ),
+                border = BorderStroke(1.5.dp, if (isLocked) RedError else BentoBorder)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (isLocked) "🔒 Platform Status: LOCKED" else "🟢 Platform Status: OPEN",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isLocked) RedError else GreenSuccess
+                        )
+
+                        Button(
+                            onClick = {
+                                onTogglePlatformLock(!isLocked, lockNoticeText)
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isLocked) GreenSuccess else RedError
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text(
+                                text = if (isLocked) "Open Deposits 🔓" else "Lock Deposits 🔒",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "Admin Website Lock Schedule & Maintenance Notice:",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextPrimary
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    OutlinedTextField(
+                        value = lockNoticeText,
+                        onValueChange = { lockNoticeText = it },
+                        label = { Text("Maintenance / Closed Lock Message") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(14.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Surface(
+                        color = GoldAccent.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(
+                            text = "💡 Note: When platform deposits are locked, users cannot start new deposits. Active savings cycles continue running and earning profits automatically ('profit of user is income it').",
+                            fontSize = 11.sp,
+                            color = NavyDark,
+                            lineHeight = 15.sp,
+                            modifier = Modifier.padding(10.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // System Capital Reserve (20M RWF) Card
+        item {
+            val reserveVal = adminConfig?.adminReserveFund ?: 20000000.0
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(containerColor = NavyDark),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "System Capital Reserve 💰",
+                                fontSize = 13.sp,
+                                color = GoldAccent,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "%,.0f RWF".format(reserveVal),
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White
+                            )
+                            Text(
+                                text = "(20 Million RWF Admin Reserve)",
+                                fontSize = 11.sp,
+                                color = Color.LightGray
+                            )
+                        }
+
+                        Surface(
+                            shape = CircleShape,
+                            color = GoldAccent.copy(alpha = 0.2f),
+                            border = BorderStroke(1.dp, GoldAccent)
+                        ) {
+                            Text(
+                                text = "20M RWF",
+                                fontWeight = FontWeight.Black,
+                                fontSize = 12.sp,
+                                color = GoldAccent,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = reserveFundText,
+                            onValueChange = { reserveFundText = it },
+                            label = { Text("Update Reserve (RWF)", color = Color.LightGray) },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.weight(1f),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = GoldAccent,
+                                unfocusedBorderColor = Color.Gray
+                            )
+                        )
+
+                        Button(
+                            onClick = {
+                                val amount = reserveFundText.toDoubleOrNull()
+                                if (amount != null && amount >= 0) {
+                                    onUpdateAdminReserveFund(amount)
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = NavyDark),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Update 20M Reserve", fontWeight = FontWeight.Bold, fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Post News & Announcements Card
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(28.dp),
+                colors = CardDefaults.cardColors(containerColor = BentoCardBg),
+                border = BorderStroke(1.dp, BentoBorder)
+            ) {
+                Column(modifier = Modifier.padding(20.dp)) {
+                    Text(
+                        text = "Post News & Announcements 📢",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Broadcast updates to all SMART FUTURE CAPITAL (SFC) users",
+                        fontSize = 11.sp,
+                        color = TextSecondary
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    OutlinedTextField(
+                        value = announcementTitle,
+                        onValueChange = { announcementTitle = it },
+                        label = { Text("Announcement Title*") },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = announcementContent,
+                        onValueChange = { announcementContent = it },
+                        label = { Text("Announcement Message / Details*") },
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Start,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        FilterChip(
+                            selected = announcementCategory == "NEWS",
+                            onClick = { announcementCategory = "NEWS" },
+                            label = { Text("NEWS") }
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        FilterChip(
+                            selected = announcementCategory == "IMPORTANT",
+                            onClick = { announcementCategory = "IMPORTANT" },
+                            label = { Text("IMPORTANT") }
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        FilterChip(
+                            selected = announcementCategory == "PROMO",
+                            onClick = { announcementCategory = "PROMO" },
+                            label = { Text("PROMO") }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = isAnnouncementUrgent,
+                            onCheckedChange = { isAnnouncementUrgent = it }
+                        )
+                        Text("Mark as Important / Priority Urgent", fontSize = 12.sp, color = TextPrimary)
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Button(
+                        onClick = {
+                            if (announcementTitle.isNotBlank() && announcementContent.isNotBlank()) {
+                                onPostAnnouncement(
+                                    announcementTitle,
+                                    announcementContent,
+                                    announcementCategory,
+                                    isAnnouncementUrgent
+                                )
+                                announcementTitle = ""
+                                announcementContent = ""
+                            }
+                        },
+                        enabled = announcementTitle.isNotBlank() && announcementContent.isNotBlank(),
+                        colors = ButtonDefaults.buttonColors(containerColor = BentoPrimaryBlue),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Post Announcement Now 📢", fontWeight = FontWeight.Bold)
+                    }
+
+                    if (announcements.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HorizontalDivider(color = BentoBorder)
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            text = "Active Posted Announcements (${announcements.size}):",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        announcements.take(5).forEach { item ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 4.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(text = item.title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                    Text(text = item.content, fontSize = 11.sp, color = TextSecondary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                                }
+                                IconButton(onClick = { onDeleteAnnouncement(item.id) }, modifier = Modifier.size(28.dp)) {
+                                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = RedError, modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        }
                     }
                 }
             }

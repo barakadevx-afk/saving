@@ -62,7 +62,7 @@ object Translations {
     fun get(language: Language): AppStrings {
         return when (language) {
             Language.EN -> AppStrings(
-                appTitle = "FUTURE SMART CAPITAL",
+                appTitle = "SMART FUTURE CAPITAL (SFC)",
                 welcomeBack = "Welcome back",
                 subtitleHero = "Make money online and get 50% profit in 3 days.",
                 availableBalance = "Available Balance",
@@ -117,7 +117,7 @@ object Translations {
                 selectLanguage = "Select Language"
             )
             Language.RW -> AppStrings(
-                appTitle = "FUTURE SMART CAPITAL",
+                appTitle = "SMART FUTURE CAPITAL (SFC)",
                 welcomeBack = "Muraho",
                 subtitleHero = "Kora amafaranga kuri interineti ubone 50% y'inyungu mu minsi 3.",
                 availableBalance = "Amafaranga Ahari",
@@ -172,7 +172,7 @@ object Translations {
                 selectLanguage = "Hitamo Ururimi"
             )
             Language.FR -> AppStrings(
-                appTitle = "FUTURE SMART CAPITAL",
+                appTitle = "SMART FUTURE CAPITAL (SFC)",
                 welcomeBack = "Bienvenue",
                 subtitleHero = "Gagnez de l'argent en ligne et obtenez 50% de profit en 3 jours.",
                 availableBalance = "Solde Disponible",

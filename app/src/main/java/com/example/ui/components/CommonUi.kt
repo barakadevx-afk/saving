@@ -53,6 +53,100 @@ import java.util.Locale
 
 
 @Composable
+fun SfcLogo(
+    modifier: Modifier = Modifier,
+    sizeDp: Int = 36,
+    showFullText: Boolean = true
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+    ) {
+        Surface(
+            shape = RoundedCornerShape(10.dp),
+            color = Color(0xFF0F172A),
+            border = BorderStroke(1.5.dp, GoldAccent),
+            shadowElevation = 2.dp
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "S",
+                    fontWeight = FontWeight.Black,
+                    fontSize = (sizeDp * 0.55).sp,
+                    color = Color(0xFF2563EB)
+                )
+                Text(
+                    text = "F",
+                    fontWeight = FontWeight.Black,
+                    fontSize = (sizeDp * 0.55).sp,
+                    color = GoldAccent
+                )
+                Text(
+                    text = "C",
+                    fontWeight = FontWeight.Black,
+                    fontSize = (sizeDp * 0.55).sp,
+                    color = Color(0xFF2563EB)
+                )
+                Spacer(modifier = Modifier.width(3.dp))
+                Row(
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.spacedBy(1.5.dp),
+                    modifier = Modifier.height((sizeDp * 0.45).dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(3.dp)
+                            .fillMaxHeight(0.4f)
+                            .background(Color(0xFF2563EB), RoundedCornerShape(1.dp))
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(3.dp)
+                            .fillMaxHeight(0.7f)
+                            .background(GoldAccent, RoundedCornerShape(1.dp))
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(3.dp)
+                            .fillMaxHeight(1.0f)
+                            .background(GreenSuccess, RoundedCornerShape(1.dp))
+                    )
+                }
+            }
+        }
+
+        if (showFullText) {
+            Spacer(modifier = Modifier.width(8.dp))
+            Column {
+                Row {
+                    Text(text = "SMART ", fontWeight = FontWeight.Black, fontSize = 12.sp, color = Color(0xFF1E3A8A))
+                    Text(text = "FUTURE ", fontWeight = FontWeight.Black, fontSize = 12.sp, color = GoldDark)
+                    Text(text = "CAPITAL", fontWeight = FontWeight.Black, fontSize = 12.sp, color = Color(0xFF1E3A8A))
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(3.dp).background(Color(0xFF2563EB), CircleShape))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Box(modifier = Modifier.size(3.dp).background(GoldAccent, CircleShape))
+                    Spacer(modifier = Modifier.width(2.dp))
+                    Box(modifier = Modifier.size(3.dp).background(GreenSuccess, CircleShape))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "SFC VAULT • 50% PROFIT",
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Gray,
+                        letterSpacing = 0.5.sp
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun TopHeaderBar(
     strings: AppStrings,
     currentLanguage: Language,
@@ -60,11 +154,13 @@ fun TopHeaderBar(
     isDarkMode: Boolean = false,
     userRole: UserRole,
     userName: String,
+    unreadAnnouncementsCount: Int = 0,
     onLanguageChange: (Language) -> Unit,
     onCurrencyChange: (AppCurrency) -> Unit = {},
     onToggleDarkMode: () -> Unit = {},
     onToggleRole: () -> Unit,
     onOpenNav: () -> Unit,
+    onOpenAnnouncements: () -> Unit = {},
     onRefresh: (() -> Unit)? = null,
     isLoading: Boolean = false
 ) {
@@ -80,7 +176,7 @@ fun TopHeaderBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 14.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -88,7 +184,7 @@ fun TopHeaderBar(
                 IconButton(
                     onClick = onOpenNav,
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(38.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(BentoBadgeGreyBg)
                 ) {
@@ -100,37 +196,43 @@ fun TopHeaderBar(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(8.dp))
 
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(BentoPrimaryBlue),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "B",
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Column {
-                    Text(
-                        text = strings.appTitle,
-                        color = BentoHeroText,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 18.sp,
-                        letterSpacing = (-0.5).sp
-                    )
-                }
+                SfcLogo(sizeDp = 28, showFullText = true)
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
+                // Announcements Notification Icon
+                IconButton(
+                    onClick = onOpenAnnouncements,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(BentoBadgeGreyBg)
+                        .testTag("announcements_bell_btn")
+                ) {
+                    BadgedBox(
+                        badge = {
+                            if (unreadAnnouncementsCount > 0) {
+                                Badge(
+                                    containerColor = RedError,
+                                    contentColor = Color.White
+                                ) {
+                                    Text("$unreadAnnouncementsCount", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = "Announcements & News",
+                            tint = if (unreadAnnouncementsCount > 0) GoldAccent else BentoHeroText,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(4.dp))
                 // Language Selector Dropdown
                 Box {
                     Button(
@@ -1635,6 +1737,157 @@ fun BentoEarningsChartCard(
                         color = TextSecondary,
                         fontWeight = FontWeight.Medium
                     )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AnnouncementsDialog(
+    announcements: List<com.example.data.model.AnnouncementEntity>,
+    onDismiss: () -> Unit,
+    onDeleteAnnouncement: ((String) -> Unit)? = null,
+    isAdmin: Boolean = false
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = BentoCardBg),
+            border = BorderStroke(1.dp, BentoBorder),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(20.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .background(GoldAccent.copy(alpha = 0.2f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Campaign, contentDescription = null, tint = GoldDark)
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(text = "Announcements & News 📢", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextPrimary)
+                            Text(text = "SMART FUTURE CAPITAL (SFC)", fontSize = 11.sp, color = TextSecondary)
+                        }
+                    }
+
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                        Icon(Icons.Default.Close, contentDescription = "Close", tint = TextSecondary)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (announcements.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "No announcements at this time. Check back later!", fontSize = 13.sp, color = TextSecondary)
+                    }
+                } else {
+                    androidx.compose.foundation.lazy.LazyColumn(
+                        modifier = Modifier.heightIn(max = 420.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(announcements.size) { index ->
+                            val item = announcements[index]
+                            Card(
+                                shape = RoundedCornerShape(14.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = if (item.isImportant) Color(0xFFFFFBEB) else Color(0xFFF8FAFC)
+                                ),
+                                border = BorderStroke(
+                                    1.dp,
+                                    if (item.isImportant) GoldAccent else Color(0xFFE2E8F0)
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = when (item.category) {
+                                                "IMPORTANT", "URGENT" -> RedError.copy(alpha = 0.15f)
+                                                "PROMO" -> GreenLight
+                                                else -> BlueLight
+                                            }
+                                        ) {
+                                            Text(
+                                                text = item.category,
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = when (item.category) {
+                                                    "IMPORTANT", "URGENT" -> RedError
+                                                    "PROMO" -> GreenSuccess
+                                                    else -> BluePrimary
+                                                },
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            )
+                                        }
+
+                                        Text(
+                                            text = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()).format(Date(item.timestamp)),
+                                            fontSize = 10.sp,
+                                            color = TextSecondary
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(6.dp))
+
+                                    Text(text = item.title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextPrimary)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(text = item.content, fontSize = 12.sp, color = TextSecondary, lineHeight = 16.sp)
+
+                                    if (isAdmin && onDeleteAnnouncement != null) {
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                                            TextButton(
+                                                onClick = { onDeleteAnnouncement(item.id) },
+                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                            ) {
+                                                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = RedError, modifier = Modifier.size(14.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Remove", fontSize = 11.sp, color = RedError)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.buttonColors(containerColor = NavyDark),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Close", fontWeight = FontWeight.Bold)
                 }
             }
         }

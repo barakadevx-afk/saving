@@ -1,5 +1,5 @@
 {
-  "name": "FUTURE SMART CAPITAL",
+  "name": "SMART FUTURE CAPITAL (SFC)",
   "description": "Transparent time-locked savings cycle system simulator with multi-tier deposits, system-calculated rewards, wallet management, admin panel, and multi-language support.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

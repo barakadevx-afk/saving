@@ -17,9 +17,10 @@ import com.example.data.model.*
         WithdrawalEntity::class,
         DepositRequestEntity::class,
         AdminConfigEntity::class,
-        AdminLogEntity::class
+        AdminLogEntity::class,
+        AnnouncementEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -30,6 +31,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun withdrawalDao(): WithdrawalDao
     abstract fun depositRequestDao(): DepositRequestDao
     abstract fun adminDao(): AdminDao
+    abstract fun announcementDao(): AnnouncementDao
 
     companion object {
         @Volatile

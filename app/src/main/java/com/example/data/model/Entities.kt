@@ -96,7 +96,21 @@ data class AdminConfigEntity(
     val rateTierB: Double = 0.02, // 10,000 RWF -> 200 RWF (2.0%)
     val rateTierC: Double = 0.02, // 15,000 RWF -> 300 RWF (2.0%)
     val rateTierD: Double = 0.02, // 45,000 RWF -> 900 RWF (2.0%)
-    val cycleDurationDays: Int = 3
+    val cycleDurationDays: Int = 3,
+    val isPlatformLocked: Boolean = false,
+    val lockNotice: String = "SFC Platform deposits are temporarily scheduled for maintenance. Active savings cycles continue earning yields as normal!",
+    val adminReserveFund: Double = 20000000.0
+)
+
+@Entity(tableName = "announcements")
+data class AnnouncementEntity(
+    @PrimaryKey val id: String,
+    val title: String,
+    val content: String,
+    val category: String = "NEWS", // "NEWS", "URGENT", "MAINTENANCE", "PROMO"
+    val postedBy: String = "SFC Admin",
+    val timestamp: Long = System.currentTimeMillis(),
+    val isImportant: Boolean = false
 )
 
 @Entity(tableName = "admin_logs")

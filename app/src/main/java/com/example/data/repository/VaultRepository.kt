@@ -14,10 +14,11 @@ class VaultRepository(
     private val transactionDao: TransactionDao,
     private val withdrawalDao: WithdrawalDao,
     private val depositRequestDao: DepositRequestDao,
-    private val adminDao: AdminDao
+    private val adminDao: AdminDao,
+    private val announcementDao: AnnouncementDao
 ) {
     suspend fun seedDefaultDataIfEmpty() {
-        // Seed admin config
+        // Seed admin config with 20M RWF System Reserve Fund
         var config = adminDao.getAdminConfig()
         if (config == null) {
             config = AdminConfigEntity(
@@ -26,9 +27,30 @@ class VaultRepository(
                 rateTierB = 0.50,
                 rateTierC = 0.50,
                 rateTierD = 0.50,
-                cycleDurationDays = 3
+                cycleDurationDays = 3,
+                isPlatformLocked = false,
+                lockNotice = "SFC Platform deposits are temporarily scheduled for maintenance. Active savings cycles continue earning yields as normal!",
+                adminReserveFund = 20000000.0 // 20 Million RWF Reserve Fund
             )
             adminDao.saveAdminConfig(config)
+        } else if (config.adminReserveFund < 20000000.0) {
+            adminDao.saveAdminConfig(config.copy(adminReserveFund = 20000000.0))
+        }
+
+        // Seed default announcement if empty
+        val existingAnnouncements = announcementDao.getAllAnnouncementsFlow().firstOrNull()
+        if (existingAnnouncements.isNullOrEmpty()) {
+            announcementDao.insertAnnouncement(
+                AnnouncementEntity(
+                    id = "ann_sfc_welcome_001",
+                    title = "Welcome to SMART FUTURE CAPITAL (SFC) 🚀",
+                    content = "SMART FUTURE CAPITAL (SFC) official 3-day savings cycles are active! Deposit into Tier A, B, C, or D plans and earn automatic high-yield returns. System Liquidity Reserve is backed by 20,000,000 RWF.",
+                    category = "IMPORTANT",
+                    postedBy = "SFC System Admin",
+                    timestamp = System.currentTimeMillis(),
+                    isImportant = true
+                )
+            )
         }
 
         // Check if demo user exists
@@ -751,6 +773,77 @@ class VaultRepository(
                 adminId = adminId,
                 action = "ROLE_UPDATED",
                 details = "Updated user $userId role to ${newRole.name}"
+            )
+        )
+    }
+
+    // Announcements & News Methods
+    fun getAllAnnouncements(): Flow<List<AnnouncementEntity>> = announcementDao.getAllAnnouncementsFlow()
+
+    suspend fun postAnnouncement(
+        title: String,
+        content: String,
+        category: String = "NEWS",
+        isImportant: Boolean = false,
+        adminId: String = "admin"
+    ) {
+        val announcement = AnnouncementEntity(
+            id = "ann_${UUID.randomUUID().toString().take(8)}",
+            title = title,
+            content = content,
+            category = category,
+            postedBy = "SFC Admin ($adminId)",
+            timestamp = System.currentTimeMillis(),
+            isImportant = isImportant
+        )
+        announcementDao.insertAnnouncement(announcement)
+        adminDao.insertAdminLog(
+            AdminLogEntity(
+                adminId = adminId,
+                action = "ANNOUNCEMENT_POSTED",
+                details = "Posted announcement: $title ($category)"
+            )
+        )
+    }
+
+    suspend fun deleteAnnouncement(id: String, adminId: String) {
+        announcementDao.deleteAnnouncement(id)
+        adminDao.insertAdminLog(
+            AdminLogEntity(
+                adminId = adminId,
+                action = "ANNOUNCEMENT_DELETED",
+                details = "Deleted announcement ID: $id"
+            )
+        )
+    }
+
+    // Platform Lock & Lock Schedule
+    suspend fun togglePlatformLock(isLocked: Boolean, lockNotice: String, adminId: String) {
+        val current = adminDao.getAdminConfig() ?: AdminConfigEntity()
+        val updated = current.copy(
+            isPlatformLocked = isLocked,
+            lockNotice = if (lockNotice.isBlank()) current.lockNotice else lockNotice
+        )
+        adminDao.saveAdminConfig(updated)
+        adminDao.insertAdminLog(
+            AdminLogEntity(
+                adminId = adminId,
+                action = if (isLocked) "PLATFORM_LOCKED" else "PLATFORM_UNLOCKED",
+                details = "Set platform deposit status to ${if (isLocked) "LOCKED" else "OPEN"}. Notice: $lockNotice"
+            )
+        )
+    }
+
+    // Admin Reserve Fund Management (20M RWF)
+    suspend fun updateAdminReserveFund(newReserveAmount: Double, adminId: String) {
+        val current = adminDao.getAdminConfig() ?: AdminConfigEntity()
+        val updated = current.copy(adminReserveFund = newReserveAmount)
+        adminDao.saveAdminConfig(updated)
+        adminDao.insertAdminLog(
+            AdminLogEntity(
+                adminId = adminId,
+                action = "RESERVE_FUND_UPDATED",
+                details = "Updated System Capital Reserve to $newReserveAmount RWF"
             )
         )
     }

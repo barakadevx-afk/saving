@@ -73,6 +73,9 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
     val pendingDepositRequests by viewModel.pendingDepositRequests.collectAsStateWithLifecycle()
     val allUsers by viewModel.allUsers.collectAsStateWithLifecycle()
     val adminLogs by viewModel.adminLogs.collectAsStateWithLifecycle()
+    val announcements by viewModel.announcements.collectAsStateWithLifecycle()
+
+    var showAnnouncementsDialog by remember { mutableStateOf(false) }
 
     val activeTab by viewModel.activeTab.collectAsStateWithLifecycle()
     val currentLanguage by viewModel.currentLanguage.collectAsStateWithLifecycle()
@@ -285,6 +288,8 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                         isDarkMode = isDarkMode,
                         userRole = user.role,
                         userName = user.fullName,
+                        unreadAnnouncementsCount = announcements.size,
+                        onOpenAnnouncements = { showAnnouncementsDialog = true },
                         onLanguageChange = { lang -> viewModel.setLanguage(lang) },
                         onCurrencyChange = { curr -> viewModel.setCurrency(curr) },
                         onToggleDarkMode = { viewModel.toggleDarkMode() },

@@ -40,6 +40,7 @@ fun DashboardScreen(
     adminConfig: AdminConfigEntity?,
     strings: AppStrings,
     referredUsers: List<UserEntity> = emptyList(),
+    announcements: List<AnnouncementEntity> = emptyList(),
     selectedCurrency: AppCurrency = AppCurrency.RWF,
     isLoading: Boolean = false,
     onOpenDepositModal: (String) -> Unit,
@@ -47,7 +48,8 @@ fun DashboardScreen(
     onViewAllTransactions: () -> Unit,
     onWithdrawClick: () -> Unit,
     onFaqClick: () -> Unit = {},
-    onWebDownloadClick: () -> Unit = {}
+    onWebDownloadClick: () -> Unit = {},
+    onOpenAnnouncements: () -> Unit = {}
 ) {
     if (isLoading) {
         BentoDashboardSkeletonScreen()
@@ -114,6 +116,193 @@ fun DashboardScreen(
                             fontSize = 11.sp,
                             color = TextSecondary,
                             fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+
+        // Latest Announcement Marquee Banner
+        if (announcements.isNotEmpty()) {
+            item {
+                val latest = announcements.first()
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onOpenAnnouncements() },
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (latest.isImportant) Color(0xFFFEF3C7) else Color(0xFFEFF6FF)
+                    ),
+                    border = BorderStroke(1.dp, if (latest.isImportant) GoldAccent else BluePrimary.copy(alpha = 0.3f))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp, vertical = 12.dp)
+                            .fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .background(
+                                        if (latest.isImportant) GoldAccent else BluePrimary,
+                                        CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Default.Campaign,
+                                    contentDescription = "Announcement",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.width(10.dp))
+
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "ANNOUNCEMENT 📢",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = if (latest.isImportant) GoldDark else BluePrimary
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "• Tap to view all",
+                                        fontSize = 10.sp,
+                                        color = TextSecondary
+                                    )
+                                }
+                                Text(
+                                    text = latest.title,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+
+                        Icon(
+                            Icons.Default.ChevronRight,
+                            contentDescription = "View",
+                            tint = TextSecondary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Platform Lock Maintenance Banner (if admin lock is active)
+        if (adminConfig?.isPlatformLocked == true) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFEF2F2)),
+                    border = BorderStroke(1.5.dp, RedError)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Lock, contentDescription = null, tint = RedError, modifier = Modifier.size(20.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Platform Deposit Status: TEMPORARILY LOCKED 🔒",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp,
+                                color = RedError
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Text(
+                            text = adminConfig.lockNotice,
+                            fontSize = 12.sp,
+                            color = TextPrimary,
+                            lineHeight = 16.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = GreenLight
+                        ) {
+                            Text(
+                                text = "✅ User Profits Guaranteed: Active savings cycles continue earning yields uninterrupted ('profit of user is income it').",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = GreenSuccess,
+                                modifier = Modifier.padding(8.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // 20 Million RWF Capital Reserve Transparency Banner
+        item {
+            val reserveAmt = adminConfig?.adminReserveFund ?: 20000000.0
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F172A)),
+                border = BorderStroke(1.dp, GoldAccent)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(GoldAccent.copy(alpha = 0.2f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Shield, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(20.dp))
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "System Liquidity Reserve 💰",
+                                fontSize = 11.sp,
+                                color = GoldAccent,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = "%,.0f RWF (20M Reserve)".format(reserveAmt),
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White
+                            )
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = GoldAccent,
+                        contentColor = NavyDark
+                    ) {
+                        Text(
+                            text = "100% Backed",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
                     }
                 }

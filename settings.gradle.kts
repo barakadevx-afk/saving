@@ -22,6 +22,6 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "FUTURE SMART CAPITAL"
+rootProject.name = "SMART FUTURE CAPITAL (SFC)"
 
 include(":app")
