@@ -36,10 +36,11 @@ fun WebDownloadScreen(
     onShowMessage: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
-    val webAppUrl = "https://barakavault.rw"
-    val winDownloadUrl = "https://barakavault.rw/downloads/BarakaVault_v2.4_Setup.exe"
-    val winZipUrl = "https://barakavault.rw/downloads/BarakaVault_v2.4_Portable.zip"
-    val apkUrl = "https://barakavault.rw/downloads/BarakaVault_v2.4.apk"
+    val webAppUrl = "https://smartfuturecapital.vercel.app"
+    val vercelDeployUrl = "https://smartfuturecapital.vercel.app"
+    val winDownloadUrl = "https://smartfuturecapital.vercel.app/downloads/SFC_Vault_v3.0_Setup.exe"
+    val winZipUrl = "https://smartfuturecapital.vercel.app/downloads/SFC_Vault_v3.0_Portable.zip"
+    val apkUrl = "https://smartfuturecapital.vercel.app/downloads/SFC_Vault_v3.0.apk"
 
     var isDownloadingWin by remember { mutableStateOf(false) }
     var isDownloadingZip by remember { mutableStateOf(false) }
@@ -99,7 +100,7 @@ fun WebDownloadScreen(
                         Spacer(modifier = Modifier.height(12.dp))
 
                         Text(
-                            text = "Baraka Vault Anywhere 🌐💻📱",
+                            text = "SMART FUTURE CAPITAL (SFC) Anywhere 🌐💻📱",
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color.White,
@@ -109,7 +110,7 @@ fun WebDownloadScreen(
                         Spacer(modifier = Modifier.height(6.dp))
 
                         Text(
-                            text = "Manage your high-yield savings cycles effortlessly on Web, Windows Desktop PC, or Android Mobile.",
+                            text = "Manage your high-yield savings cycles effortlessly on Web (Hosted on Vercel), Windows Desktop PC, or Android Mobile.",
                             fontSize = 13.sp,
                             color = Color.White.copy(alpha = 0.8f),
                             lineHeight = 18.sp
@@ -285,17 +286,17 @@ fun WebDownloadScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Verified, contentDescription = null, tint = BluePrimary, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Verified Publisher: Future Smart Capital Ltd.", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                            Text("Verified Publisher: SMART FUTURE CAPITAL (SFC) Ltd.", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.NotificationsActive, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.CloudQueue, contentDescription = null, tint = GoldAccent, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Native Action Center notifications on 3-day cycle completion", fontSize = 11.sp, color = TextSecondary)
+                            Text("Hosted & Deployed via Vercel Global Edge Network with zero downtime", fontSize = 11.sp, color = TextSecondary)
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Speed, contentDescription = null, tint = GreenSuccess, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("High performance, low memory usage, system tray quick actions", fontSize = 11.sp, color = TextSecondary)
+                            Text("High performance, low memory usage, real-time sync with mobile app", fontSize = 11.sp, color = TextSecondary)
                         }
                     }
 
@@ -308,7 +309,7 @@ fun WebDownloadScreen(
                     Button(
                         onClick = {
                             isDownloadingWin = true
-                            onShowMessage("Starting Download: BarakaVault_v2.4_Setup.exe (64.2 MB) 📥")
+                            onShowMessage("Starting Download: SFC_Vault_v3.0_Setup.exe (64.2 MB) 📥")
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(winDownloadUrl))
                             try { context.startActivity(intent) } catch (_: Exception) {}
                         },
@@ -336,7 +337,7 @@ fun WebDownloadScreen(
                     OutlinedButton(
                         onClick = {
                             isDownloadingZip = true
-                            onShowMessage("Starting Download: BarakaVault_v2.4_Portable.zip (58.1 MB) 📦")
+                            onShowMessage("Starting Download: SFC_Vault_v3.0_Portable.zip (58.1 MB) 📦")
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(winZipUrl))
                             try { context.startActivity(intent) } catch (_: Exception) {}
                         },
@@ -390,7 +391,7 @@ fun WebDownloadScreen(
                     OutlinedButton(
                         onClick = {
                             isDownloadingApk = true
-                            onShowMessage("Starting Download: BarakaVault_v2.4.apk (24.5 MB) 📱")
+                            onShowMessage("Starting Download: SFC_Vault_v3.0.apk (24.5 MB) 📱")
                             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(apkUrl))
                             try { context.startActivity(intent) } catch (_: Exception) {}
                         },
@@ -399,7 +400,7 @@ fun WebDownloadScreen(
                     ) {
                         Icon(Icons.Default.FileDownload, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(text = "Download Android APK (v2.4.0) • 24.5 MB", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        Text(text = "Download Android APK (v3.0.0) • 24.5 MB", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     }
                 }
             }
@@ -419,11 +420,11 @@ fun WebDownloadScreen(
 
                     Text("1. Click 'Download Windows Installer (.exe)' above.", fontSize = 12.sp, color = TextSecondary)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("2. Run 'BarakaVault_v2.4_Setup.exe' from your Downloads folder.", fontSize = 12.sp, color = TextSecondary)
+                    Text("2. Run 'SFC_Vault_v3.0_Setup.exe' from your Downloads folder.", fontSize = 12.sp, color = TextSecondary)
                     Spacer(modifier = Modifier.height(4.dp))
                     Text("3. If Windows SmartScreen appears: click 'More info' -> 'Run anyway'.", fontSize = 12.sp, color = TextSecondary)
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("4. Launch Baraka Vault and log in with your phone number and password.", fontSize = 12.sp, color = TextSecondary)
+                    Text("4. Launch SMART FUTURE CAPITAL and log in with your phone number and password.", fontSize = 12.sp, color = TextSecondary)
                 }
             }
         }

@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMART FUTURE CAPITAL (SFC) | High-Yield 3-Day Micro-Savings Platform</title>
+  <meta name="description" content="SMART FUTURE CAPITAL (SFC) - Automated 3-day high-yield savings cycles backed by a 20,000,000 RWF capital reserve. Earn predictable 2.0% returns every 3 days.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --navy-dark: #001A40;
+      --navy-sidebar: #1D1B20;
+      --gold-accent: #E5A93B;
+      --gold-dark: #B45309;
+      --blue-primary: #005AC1;
+      --green-success: #10B981;
+      --green-light: #E8F5E9;
+      --bento-bg: #F7F9FC;
+      --card-bg: #FFFFFF;
+      --border-color: #E0E2EC;
+      --text-primary: #1B1B1F;
+      --text-secondary: #74777F;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bento-bg);
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+    header {
+      background-color: var(--navy-dark);
+      color: #fff;
+      padding: 1rem 1.5rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    .nav-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.25rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #fff;
+      text-decoration: none;
+    }
+    .logo-badge {
+      background: linear-gradient(135deg, var(--gold-accent), #FFD54F);
+      color: var(--navy-dark);
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-weight: 900;
+      font-size: 0.9rem;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .nav-links a {
+      color: rgba(255,255,255,0.85);
+      text-decoration: none;
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover {
+      color: var(--gold-accent);
+    }
+    .btn-header {
+      background-color: var(--gold-accent);
+      color: var(--navy-dark);
+      padding: 8px 18px;
+      border-radius: 10px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .btn-header:hover {
+      background-color: #f3b749;
+      transform: translateY(-1px);
+    }
+    .hero {
+      background: linear-gradient(180deg, var(--navy-dark) 0%, #0c2b5c 100%);
+      color: #fff;
+      padding: 4rem 1.5rem 5rem;
+      text-align: center;
+    }
+    .hero-container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .reserve-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(229, 169, 59, 0.15);
+      border: 1px solid var(--gold-accent);
+      padding: 6px 14px;
+      border-radius: 999px;
+      color: var(--gold-accent);
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-bottom: 1.5rem;
+    }
+    .hero h1 {
+      font-size: 2.75rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 1rem;
+      letter-spacing: -1px;
+    }
+    .hero p {
+      font-size: 1.15rem;
+      color: rgba(255,255,255,0.8);
+      margin-bottom: 2rem;
+    }
+    .hero-actions {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--gold-accent), #FFD54F);
+      color: var(--navy-dark);
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 1rem;
+      text-decoration: none;
+      box-shadow: 0 4px 14px rgba(229, 169, 59, 0.4);
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.25);
+      color: #fff;
+      padding: 14px 28px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 1rem;
+      text-decoration: none;
+    }
+    .main-content {
+      max-width: 1100px;
+      margin: -3rem auto 4rem;
+      padding: 0 1.5rem;
+    }
+    .bento-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+    .bento-card {
+      background-color: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 1.75rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
+    }
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tier-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: 1rem;
+    }
+    .tier-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 14px;
+      background: #F8FAFC;
+      border-radius: 12px;
+      border: 1px solid #E2E8F0;
+    }
+    .tier-item.highlight {
+      border-color: var(--gold-accent);
+      background: #FFFDF7;
+    }
+    .tier-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+    .tier-detail {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+    }
+    .tier-return {
+      font-weight: 800;
+      color: var(--green-success);
+      font-size: 1rem;
+      text-align: right;
+    }
+    .calc-input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      font-size: 1rem;
+      margin-top: 8px;
+    }
+    .calc-result {
+      margin-top: 1rem;
+      background: var(--navy-dark);
+      color: #fff;
+      padding: 1rem;
+      border-radius: 14px;
+      text-align: center;
+    }
+    .calc-profit {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--gold-accent);
+    }
+    .payment-instructions {
+      background: #EFF6FF;
+      border: 1px solid #BFDBFE;
+      border-radius: 14px;
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+    .momo-code {
+      font-family: monospace;
+      font-weight: 800;
+      font-size: 1.2rem;
+      color: var(--blue-primary);
+      background: #DBEAFE;
+      padding: 4px 8px;
+      border-radius: 6px;
+      display: inline-block;
+      margin-top: 4px;
+    }
+    footer {
+      background-color: var(--navy-dark);
+      color: rgba(255,255,255,0.7);
+      text-align: center;
+      padding: 2.5rem 1.5rem;
+      font-size: 0.9rem;
+    }
+    footer a {
+      color: var(--gold-accent);
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="nav-container">
+      <a href="#" class="logo">
+        <span class="logo-badge">SFC</span>
+        <span>SMART FUTURE CAPITAL</span>
+      </a>
+      <div class="nav-links">
+        <a href="#calculator">Calculator</a>
+        <a href="#tiers">Tiers</a>
+        <a href="#deposit">Deposit Info</a>
+        <a href="#download" class="btn-header">Get App</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-container">
+      <div class="reserve-badge">
+        <span>🛡️</span> 20,000,000 RWF Capital Reserve Guaranteed
+      </div>
+      <h1>Accelerate Your Growth with 3-Day Micro-Savings Cycles</h1>
+      <p>Automated fixed-yield returns with guaranteed payouts. Earn 2.0% on every cycle with SMART FUTURE CAPITAL (SFC).</p>
+      <div class="hero-actions">
+        <a href="#calculator" class="btn-primary">Calculate Your Yield 🚀</a>
+        <a href="#deposit" class="btn-secondary">Deposit via MoMo Code 💳</a>
+      </div>
+    </div>
+  </section>
+
+  <main class="main-content">
+    <div class="bento-grid">
+      <!-- Tiers Bento Card -->
+      <div class="bento-card" id="tiers">
+        <div class="card-title">
+          <span>⚡</span> Available Savings Tiers
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">Fixed 3-day lock periods with automated yield payouts.</p>
+        
+        <div class="tier-list">
+          <div class="tier-item">
+            <div>
+              <div class="tier-name">Tier A: 6,000 RWF</div>
+              <div class="tier-detail">3 Days • 2.0% Yield</div>
+            </div>
+            <div>
+              <div class="tier-return">+120 RWF</div>
+              <div class="tier-detail">Total: 6,120 RWF</div>
+            </div>
+          </div>
+
+          <div class="tier-item">
+            <div>
+              <div class="tier-name">Tier B: 10,000 RWF</div>
+              <div class="tier-detail">3 Days • 2.0% Yield</div>
+            </div>
+            <div>
+              <div class="tier-return">+200 RWF</div>
+              <div class="tier-detail">Total: 10,200 RWF</div>
+            </div>
+          </div>
+
+          <div class="tier-item highlight">
+            <div>
+              <div class="tier-name">Tier C (Popular): 15,000 RWF ⭐</div>
+              <div class="tier-detail">3 Days • 2.0% Yield</div>
+            </div>
+            <div>
+              <div class="tier-return">+300 RWF</div>
+              <div class="tier-detail">Total: 15,300 RWF</div>
+            </div>
+          </div>
+
+          <div class="tier-item">
+            <div>
+              <div class="tier-name">Tier D (High Yield): 45,000 RWF 💎</div>
+              <div class="tier-detail">3 Days • 2.0% Yield</div>
+            </div>
+            <div>
+              <div class="tier-return">+900 RWF</div>
+              <div class="tier-detail">Total: 45,900 RWF</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Interactive Calculator Bento Card -->
+      <div class="bento-card" id="calculator">
+        <div class="card-title">
+          <span>📈</span> Yield Calculator
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">Estimate your growth over multiple consecutive 3-day cycles.</p>
+
+        <div style="margin-top: 1rem;">
+          <label style="font-size: 0.85rem; font-weight: 600;">Deposit Principal (RWF):</label>
+          <input type="number" id="calcPrincipal" class="calc-input" value="15000" step="1000" min="1000" oninput="calculateReturns()">
+        </div>
+
+        <div style="margin-top: 0.75rem;">
+          <label style="font-size: 0.85rem; font-weight: 600;">Number of Consecutive 3-Day Cycles:</label>
+          <select id="calcCycles" class="calc-input" onchange="calculateReturns()">
+            <option value="1">1 Cycle (3 Days)</option>
+            <option value="2">2 Cycles (6 Days)</option>
+            <option value="5" selected>5 Cycles (15 Days)</option>
+            <option value="10">10 Cycles (30 Days / 1 Month)</option>
+          </select>
+        </div>
+
+        <div class="calc-result">
+          <div style="font-size: 0.8rem; color: rgba(255,255,255,0.7);">Estimated Total Profit:</div>
+          <div class="calc-profit" id="calcProfitResult">+1,500 RWF</div>
+          <div style="font-size: 0.85rem; margin-top: 4px;" id="calcTotalResult">Total Payout: 16,500 RWF</div>
+        </div>
+      </div>
+
+      <!-- MoMo Deposit Guide Bento Card -->
+      <div class="bento-card" id="deposit">
+        <div class="card-title">
+          <span>💳</span> MTN / Airtel Deposit Guide
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">Direct mobile money payments with instant automated crediting.</p>
+
+        <div class="payment-instructions">
+          <div style="font-size: 0.85rem; font-weight: 700; color: #1E40AF;">Official MTN MoMo Merchant Code:</div>
+          <div class="momo-code">*182*8*1*1799283#</div>
+          <div style="font-size: 0.8rem; color: #3B82F6; margin-top: 4px;">Account Name: SMART FUTURE CAPITAL</div>
+        </div>
+
+        <div style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+          <p>1. Dial the MTN Mobile Money merchant code or send to Airtel.</p>
+          <p>2. Enter your chosen tier amount (e.g. 15,000 RWF).</p>
+          <p>3. Copy the SMS Transaction ID and submit it in the SFC App.</p>
+        </div>
+      </div>
+
+      <!-- App Download & Vercel Edge Bento Card -->
+      <div class="bento-card" id="download">
+        <div class="card-title">
+          <span>🌐</span> Cross-Platform & Downloads
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">Hosted on Vercel Global Edge Network with zero downtime.</p>
+
+        <div style="margin-top: 1.25rem; display: flex; flex-direction: column; gap: 10px;">
+          <a href="#" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: 12px; background: var(--navy-dark); color: #fff; text-decoration: none;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span>📱</span>
+              <div>
+                <div style="font-weight: 700; font-size: 0.9rem;">Android APK (v3.0)</div>
+                <div style="font-size: 0.75rem; color: var(--gold-accent);">Direct Mobile Download • 24.5 MB</div>
+              </div>
+            </div>
+            <span style="font-size: 0.8rem; font-weight: 700; color: var(--gold-accent);">Download ➔</span>
+          </a>
+
+          <a href="#" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: 12px; background: #F1F5F9; color: var(--text-primary); text-decoration: none; border: 1px solid var(--border-color);">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span>💻</span>
+              <div>
+                <div style="font-weight: 700; font-size: 0.9rem;">Windows Desktop (v3.0)</div>
+                <div style="font-size: 0.75rem; color: var(--text-secondary);">Installer & Portable Edition • 64.2 MB</div>
+              </div>
+            </div>
+            <span style="font-size: 0.8rem; font-weight: 700; color: var(--blue-primary);">Get .exe ➔</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    <p>© 2026 SMART FUTURE CAPITAL (SFC). All rights reserved.</p>
+    <p style="margin-top: 6px; font-size: 0.8rem;">Deployed and optimized for <a href="https://vercel.com" target="_blank">Vercel</a> • Backed by 20M RWF Liquidity Reserve</p>
+  </footer>
+
+  <script>
+    function calculateReturns() {
+      const principal = parseFloat(document.getElementById('calcPrincipal').value) || 0;
+      const cycles = parseInt(document.getElementById('calcCycles').value) || 1;
+      const rate = 0.02; // 2% per 3-day cycle
+      
+      const singleCycleProfit = principal * rate;
+      const totalProfit = singleCycleProfit * cycles;
+      const totalPayout = principal + totalProfit;
+
+      document.getElementById('calcProfitResult').innerText = '+' + Math.round(totalProfit).toLocaleString() + ' RWF';
+      document.getElementById('calcTotalResult').innerText = 'Total Payout: ' + Math.round(totalPayout).toLocaleString() + ' RWF (' + (cycles * 3) + ' Days)';
+    }
+  </script>
+</body>
+</html>

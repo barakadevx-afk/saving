@@ -1,0 +1,29 @@
+{
+  "name": "smart-future-capital",
+  "version": "3.0.0",
+  "description": "SMART FUTURE CAPITAL (SFC) - Automated 3-Day High-Yield Micro-Savings & Capital Growth Platform",
+  "main": "public/index.html",
+  "scripts": {
+    "dev": "npx serve public",
+    "build": "echo 'Build completed for Vercel Edge Hosting'",
+    "start": "npx serve public"
+  },
+  "keywords": [
+    "savings",
+    "rwanda",
+    "fintech",
+    "microfinance",
+    "yield",
+    "sfc",
+    "smart-future-capital",
+    "vercel"
+  ],
+  "author": "SMART FUTURE CAPITAL (SFC)",
+  "license": "MIT",
+  "dependencies": {
+    "serve": "^14.2.4"
+  },
+  "devDependencies": {
+    "vercel": "^39.0.0"
+  }
+}

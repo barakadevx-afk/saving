@@ -29,12 +29,14 @@ val NavyCard = Color(0xFF1D1B20)
 
 // Accent & Status Colors
 val GoldAccent = Color(0xFFE5A93B)
+val GoldDark = Color(0xFFB45309)
 val GoldLight = Color(0xFFFFF7ED)
 val BluePrimary = Color(0xFF005AC1)
 val BlueLight = Color(0xFFD8E2FF)
 val GreenSuccess = Color(0xFF10B981)
 val GreenLight = Color(0xFFE8F5E9)
 val RedDanger = Color(0xFFEF4444)
+val RedError = Color(0xFFBA1A1A)
 val OrangeWarning = Color(0xFFF59E0B)
 
 // Neutral & Background Colors

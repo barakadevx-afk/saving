@@ -24,6 +24,7 @@ import com.example.data.model.AppCurrency
 import com.example.data.model.UserRole
 import com.example.ui.components.DepositModalDialog
 import com.example.ui.components.TopHeaderBar
+import com.example.ui.components.AnnouncementsDialog
 import com.example.ui.screens.*
 import com.example.ui.theme.BarakaVaultTheme
 import com.example.ui.theme.NavyDark
@@ -394,6 +395,7 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                                 adminConfig = adminConfig,
                                 strings = strings,
                                 referredUsers = referredUsers,
+                                announcements = announcements,
                                 selectedCurrency = selectedCurrency,
                                 isLoading = isLoading,
                                 onOpenDepositModal = { tierId -> viewModel.openDepositModal(tierId) },
@@ -401,7 +403,8 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                                 onViewAllTransactions = { viewModel.selectTab(NavigationTab.TRANSACTIONS) },
                                 onWithdrawClick = { viewModel.selectTab(NavigationTab.WITHDRAW) },
                                 onFaqClick = { viewModel.selectTab(NavigationTab.FAQ) },
-                                onWebDownloadClick = { viewModel.selectTab(NavigationTab.WEB_DOWNLOAD) }
+                                onWebDownloadClick = { viewModel.selectTab(NavigationTab.WEB_DOWNLOAD) },
+                                onOpenAnnouncements = { showAnnouncementsDialog = true }
                             )
                         }
 
@@ -482,6 +485,7 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                                 pendingDepositRequests = pendingDepositRequests,
                                 allUsers = allUsers,
                                 adminLogs = adminLogs,
+                                announcements = announcements,
                                 strings = strings,
                                 onApproveWithdrawal = { id -> viewModel.approveWithdrawal(id) },
                                 onRejectWithdrawal = { id -> viewModel.rejectWithdrawal(id) },
@@ -497,6 +501,18 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                                 },
                                 onUpdateUserRole = { userId, newRole ->
                                     viewModel.updateUserRole(userId, newRole)
+                                },
+                                onPostAnnouncement = { title, content, category, isUrgent ->
+                                    viewModel.postAnnouncement(title, content, category, isUrgent)
+                                },
+                                onDeleteAnnouncement = { id ->
+                                    viewModel.deleteAnnouncement(id)
+                                },
+                                onTogglePlatformLock = { isLocked, notice ->
+                                    viewModel.togglePlatformLock(isLocked, notice)
+                                },
+                                onUpdateAdminReserveFund = { amount ->
+                                    viewModel.updateAdminReserveFund(amount)
                                 }
                             )
                         }
@@ -537,6 +553,15 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                                     proofScreenshotUri = screenshotUri
                                 )
                             }
+                        )
+                    }
+
+                    if (showAnnouncementsDialog) {
+                        AnnouncementsDialog(
+                            announcements = announcements,
+                            onDismiss = { showAnnouncementsDialog = false },
+                            onDeleteAnnouncement = { annId: String -> viewModel.deleteAnnouncement(annId) },
+                            isAdmin = user.role == UserRole.ADMIN
                         )
                     }
                 }
