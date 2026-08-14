@@ -49,7 +49,7 @@ fun WebDownloadScreen(
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(LightBackground)
+            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 16.dp),
         contentPadding = PaddingValues(top = 16.dp, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -410,21 +410,21 @@ fun WebDownloadScreen(
         item {
             Card(
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
-                border = BorderStroke(1.dp, Color(0xFFE2E8F0)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(modifier = Modifier.padding(18.dp)) {
-                    Text(text = "📖 Windows Installation Instructions", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextPrimary)
+                    Text(text = "📖 Windows Installation Instructions", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
                     Spacer(modifier = Modifier.height(10.dp))
 
-                    Text("1. Click 'Download Windows Installer (.exe)' above.", fontSize = 12.sp, color = TextSecondary)
+                    Text("1. Click 'Download Windows Installer (.exe)' above.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("2. Run 'SFC_Vault_v3.0_Setup.exe' from your Downloads folder.", fontSize = 12.sp, color = TextSecondary)
+                    Text("2. Run 'SFC_Vault_v3.0_Setup.exe' from your Downloads folder.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("3. If Windows SmartScreen appears: click 'More info' -> 'Run anyway'.", fontSize = 12.sp, color = TextSecondary)
+                    Text("3. If Windows SmartScreen appears: click 'More info' -> 'Run anyway'.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                     Spacer(modifier = Modifier.height(4.dp))
-                    Text("4. Launch SMART FUTURE CAPITAL and log in with your phone number and password.", fontSize = 12.sp, color = TextSecondary)
+                    Text("4. Launch SMART FUTURE CAPITAL and log in with your phone number and password.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                 }
             }
         }

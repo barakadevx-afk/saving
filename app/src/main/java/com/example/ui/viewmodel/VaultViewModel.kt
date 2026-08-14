@@ -106,6 +106,12 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     val allDepositRequests: StateFlow<List<DepositRequestEntity>> = repository.getAllDepositRequests()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val allWithdrawals: StateFlow<List<WithdrawalEntity>> = repository.getAllWithdrawalsFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val allTransactions: StateFlow<List<TransactionEntity>> = repository.getAllTransactionsFlow()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val allUsers: StateFlow<List<UserEntity>> = repository.getAllUsersFlow()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

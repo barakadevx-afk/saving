@@ -1,6 +1,7 @@
 package com.example.ui.components
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -238,56 +239,134 @@ fun TopHeaderBar(
                 Spacer(modifier = Modifier.width(4.dp))
                 // Language Selector Dropdown
                 Box {
-                    Button(
+                    Surface(
                         onClick = { languageMenuExpanded = true },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = BentoBadgeGreyBg,
-                            contentColor = BentoHeroText
-                        ),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
                         shape = RoundedCornerShape(20.dp),
-                        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+                        color = if (isDarkMode) BentoDarkCardBg else BentoBadgeGreyBg,
+                        border = BorderStroke(1.dp, if (isDarkMode) DarkBorder else BentoBorder),
                         modifier = Modifier.testTag("language_selector_btn")
                     ) {
-                        val flag = when (currentLanguage) {
-                            Language.EN -> "🇬🇧 EN"
-                            Language.RW -> "🇷🇼 RW"
-                            Language.FR -> "🇫🇷 FR"
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val flag = when (currentLanguage) {
+                                Language.EN -> "🇬🇧 EN"
+                                Language.RW -> "🇷🇼 RW"
+                                Language.FR -> "🇫🇷 FR"
+                            }
+                            Text(
+                                text = flag,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDarkMode) TextPrimaryDark else BentoHeroText
+                            )
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Icon(
+                                imageVector = Icons.Default.ArrowDropDown,
+                                contentDescription = "Select Language",
+                                tint = if (isDarkMode) TextPrimaryDark else BentoHeroText,
+                                modifier = Modifier.size(16.dp)
+                            )
                         }
-                        Text(text = flag, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                        Spacer(modifier = Modifier.width(2.dp))
-                        Icon(
-                            imageVector = Icons.Default.ArrowDropDown,
-                            contentDescription = "Select Language",
-                            modifier = Modifier.size(16.dp)
-                        )
                     }
 
                     DropdownMenu(
                         expanded = languageMenuExpanded,
                         onDismissRequest = { languageMenuExpanded = false },
-                        modifier = Modifier.background(BentoCardBg)
+                        modifier = Modifier
+                            .background(if (isDarkMode) DarkSurface else BentoCardBg)
+                            .testTag("language_dropdown_menu")
                     ) {
                         DropdownMenuItem(
-                            text = { Text("🇬🇧 English", color = TextPrimary, fontWeight = FontWeight.Medium) },
+                            leadingIcon = { Text("🇬🇧", fontSize = 16.sp) },
+                            text = {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "English (EN)",
+                                        color = if (currentLanguage == Language.EN) GoldAccent else (if (isDarkMode) TextPrimaryDark else TextPrimary),
+                                        fontWeight = if (currentLanguage == Language.EN) FontWeight.Bold else FontWeight.Medium
+                                    )
+                                    if (currentLanguage == Language.EN) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Selected",
+                                            tint = GoldAccent,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            },
                             onClick = {
                                 onLanguageChange(Language.EN)
                                 languageMenuExpanded = false
-                            }
+                            },
+                            modifier = Modifier.testTag("lang_en_option")
                         )
                         DropdownMenuItem(
-                            text = { Text("🇷🇼 Kinyarwanda", color = TextPrimary, fontWeight = FontWeight.Medium) },
+                            leadingIcon = { Text("🇷🇼", fontSize = 16.sp) },
+                            text = {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Kinyarwanda (RW)",
+                                        color = if (currentLanguage == Language.RW) GoldAccent else (if (isDarkMode) TextPrimaryDark else TextPrimary),
+                                        fontWeight = if (currentLanguage == Language.RW) FontWeight.Bold else FontWeight.Medium
+                                    )
+                                    if (currentLanguage == Language.RW) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Selected",
+                                            tint = GoldAccent,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            },
                             onClick = {
                                 onLanguageChange(Language.RW)
                                 languageMenuExpanded = false
-                            }
+                            },
+                            modifier = Modifier.testTag("lang_rw_option")
                         )
                         DropdownMenuItem(
-                            text = { Text("🇫🇷 Français", color = TextPrimary, fontWeight = FontWeight.Medium) },
+                            leadingIcon = { Text("🇫🇷", fontSize = 16.sp) },
+                            text = {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Français (FR)",
+                                        color = if (currentLanguage == Language.FR) GoldAccent else (if (isDarkMode) TextPrimaryDark else TextPrimary),
+                                        fontWeight = if (currentLanguage == Language.FR) FontWeight.Bold else FontWeight.Medium
+                                    )
+                                    if (currentLanguage == Language.FR) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.Check,
+                                            contentDescription = "Selected",
+                                            tint = GoldAccent,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
+                            },
                             onClick = {
                                 onLanguageChange(Language.FR)
                                 languageMenuExpanded = false
-                            }
+                            },
+                            modifier = Modifier.testTag("lang_fr_option")
                         )
                     }
                 }
@@ -593,6 +672,206 @@ fun StatOverviewCard(
 }
 
 @Composable
+fun RealtimeAccruedProfitIndicator(
+    cycle: SavingsCycleEntity,
+    currentTime: Long,
+    selectedCurrency: AppCurrency = AppCurrency.RWF,
+    modifier: Modifier = Modifier
+) {
+    val totalDuration = (cycle.endDate - cycle.startDate).coerceAtLeast(1L)
+    val elapsed = (currentTime - cycle.startDate).coerceAtLeast(0L)
+    val remaining = (cycle.endDate - currentTime).coerceAtLeast(0L)
+    val progress = (elapsed.toDouble() / totalDuration.toDouble()).coerceIn(0.0, 1.0)
+
+    val totalExpectedReward = cycle.expectedReward
+    val accruedProfit = totalExpectedReward * progress
+    val currentVaultValue = cycle.depositAmount + accruedProfit
+
+    val totalDurationSec = totalDuration / 1000.0
+    val rewardPerSecond = totalExpectedReward / totalDurationSec
+    val rewardPerHour = rewardPerSecond * 3600.0
+
+    val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+    val alphaPulse by infiniteTransition.animateFloat(
+        initialValue = 0.4f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(750, easing = LinearEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "alphaPulse"
+    )
+
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = Color(0xFF041D14), // Deep emerald glow
+        border = BorderStroke(
+            1.5.dp,
+            Brush.linearGradient(
+                listOf(GreenSuccess, GoldAccent, GreenSuccess)
+            )
+        ),
+        modifier = modifier
+            .fillMaxWidth()
+            .testTag("realtime_accrued_profit_indicator")
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Live Status Header Row
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(GreenSuccess.copy(alpha = alphaPulse))
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "LIVE ACCRUED PROFIT",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Black,
+                        color = GreenSuccess,
+                        letterSpacing = 0.8.sp
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = GoldAccent.copy(alpha = 0.2f),
+                    border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        text = "⚡ +%,.2f RWF/hr".format(rewardPerHour),
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = GoldAccent,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Large Accrued Profit Ticker
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Column {
+                    Text(
+                        text = if (selectedCurrency == AppCurrency.RWF) "+%,.2f RWF".format(accruedProfit) else "+${selectedCurrency.format(accruedProfit)}",
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Black,
+                        color = GreenSuccess,
+                        letterSpacing = (-0.5).sp
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "Real-time 1s ticker • %,.1f%% of %,d RWF target".format(progress * 100, totalExpectedReward.toInt()),
+                        fontSize = 11.sp,
+                        color = Color.White.copy(alpha = 0.75f),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color.White.copy(alpha = 0.12f)
+                ) {
+                    Text(
+                        text = if (remaining > 0) "Accruing 🟢" else "Matured 🎉",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Real-Time Progress Bar with Gradient
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color.White.copy(alpha = 0.15f))
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(progress.toFloat())
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(
+                            Brush.horizontalGradient(
+                                listOf(GreenSuccess, GoldAccent)
+                            )
+                        )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Live Vault Metrics Grid
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color.White.copy(alpha = 0.06f),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Text(
+                            text = "CURRENT VAULT WORTH",
+                            fontSize = 8.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White.copy(alpha = 0.5f)
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = if (selectedCurrency == AppCurrency.RWF) "%,.2f RWF".format(currentVaultValue) else selectedCurrency.format(currentVaultValue),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
+                        )
+                    }
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = Color.White.copy(alpha = 0.06f),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Column(modifier = Modifier.padding(8.dp)) {
+                        Text(
+                            text = "PER-SECOND YIELD",
+                            fontSize = 8.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White.copy(alpha = 0.5f)
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = "+%,.4f RWF/s".format(rewardPerSecond),
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = GoldAccent
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun ThreeDayLockTimerComponent(
     startDate: Long,
     endDate: Long,
@@ -783,6 +1062,15 @@ fun ActiveCycleProgressCard(
     val rewardFormatted = selectedCurrency.format(cycle.expectedReward)
     val totalPayoutFormatted = selectedCurrency.format(cycle.depositAmount + cycle.expectedReward)
 
+    var currentTime by remember { mutableLongStateOf(System.currentTimeMillis()) }
+
+    LaunchedEffect(cycle.endDate) {
+        while (currentTime < cycle.endDate) {
+            currentTime = System.currentTimeMillis()
+            kotlinx.coroutines.delay(1000L)
+        }
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -835,7 +1123,16 @@ fun ActiveCycleProgressCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Real-Time Accrued Interest Live Visual Indicator
+            RealtimeAccruedProfitIndicator(
+                cycle = cycle,
+                currentTime = currentTime,
+                selectedCurrency = selectedCurrency
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             // 3-Day Lock Timer Component
             ThreeDayLockTimerComponent(

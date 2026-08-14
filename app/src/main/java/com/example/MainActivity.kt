@@ -72,6 +72,9 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
     val adminConfig by viewModel.adminConfig.collectAsStateWithLifecycle()
     val pendingWithdrawals by viewModel.pendingWithdrawals.collectAsStateWithLifecycle()
     val pendingDepositRequests by viewModel.pendingDepositRequests.collectAsStateWithLifecycle()
+    val allDepositRequests by viewModel.allDepositRequests.collectAsStateWithLifecycle()
+    val allWithdrawals by viewModel.allWithdrawals.collectAsStateWithLifecycle()
+    val allTransactions by viewModel.allTransactions.collectAsStateWithLifecycle()
     val allUsers by viewModel.allUsers.collectAsStateWithLifecycle()
     val adminLogs by viewModel.adminLogs.collectAsStateWithLifecycle()
     val announcements by viewModel.announcements.collectAsStateWithLifecycle()
@@ -145,7 +148,7 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
 
                     NavigationDrawerItem(
                         icon = { Icon(Icons.Default.Dashboard, contentDescription = null, tint = Color.White) },
-                        label = { Text("Dashboard", color = Color.White) },
+                        label = { Text(strings.dashboard, color = Color.White) },
                         selected = activeTab == NavigationTab.DASHBOARD,
                         onClick = {
                             viewModel.selectTab(NavigationTab.DASHBOARD)
@@ -211,7 +214,7 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
 
                     NavigationDrawerItem(
                         icon = { Icon(Icons.Default.HelpOutline, contentDescription = null, tint = Color.White) },
-                        label = { Text("Help & FAQ", color = Color.White) },
+                        label = { Text(strings.helpAndFaq, color = Color.White) },
                         selected = activeTab == NavigationTab.FAQ,
                         onClick = {
                             viewModel.selectTab(NavigationTab.FAQ)
@@ -222,7 +225,7 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
 
                     NavigationDrawerItem(
                         icon = { Icon(Icons.Default.DesktopWindows, contentDescription = null, tint = GoldAccent) },
-                        label = { Text("Web & Windows App 🌐💻", color = Color.White, fontWeight = FontWeight.Bold) },
+                        label = { Text("${strings.webAndDesktop} 🌐💻", color = Color.White, fontWeight = FontWeight.Bold) },
                         selected = activeTab == NavigationTab.WEB_DOWNLOAD,
                         onClick = {
                             viewModel.selectTab(NavigationTab.WEB_DOWNLOAD)
@@ -259,7 +262,7 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
 
                     NavigationDrawerItem(
                         icon = { Icon(if (isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode, contentDescription = null, tint = Color.White) },
-                        label = { Text(if (isDarkMode) "Light Theme" else "Dark Theme", color = Color.White) },
+                        label = { Text(if (isDarkMode) strings.lightTheme else strings.darkTheme, color = Color.White) },
                         selected = false,
                         onClick = {
                             viewModel.toggleDarkMode()
@@ -308,7 +311,7 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                     ) {
                         NavigationBarItem(
                             icon = { Icon(Icons.Default.Dashboard, contentDescription = "Dashboard") },
-                            label = { Text("Dashboard", fontSize = 10.sp) },
+                            label = { Text(strings.dashboard, fontSize = 10.sp) },
                             selected = activeTab == NavigationTab.DASHBOARD,
                             onClick = { viewModel.selectTab(NavigationTab.DASHBOARD) },
                             colors = NavigationBarItemDefaults.colors(
@@ -322,7 +325,7 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
 
                         NavigationBarItem(
                             icon = { Icon(Icons.Default.Autorenew, contentDescription = "Cycles") },
-                            label = { Text("Cycles", fontSize = 10.sp) },
+                            label = { Text(strings.savingsCycles, fontSize = 10.sp) },
                             selected = activeTab == NavigationTab.CYCLES,
                             onClick = { viewModel.selectTab(NavigationTab.CYCLES) },
                             colors = NavigationBarItemDefaults.colors(
@@ -336,7 +339,7 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
 
                         NavigationBarItem(
                             icon = { Icon(Icons.Default.AccountBalanceWallet, contentDescription = "Wallet") },
-                            label = { Text("Wallet", fontSize = 10.sp) },
+                            label = { Text(strings.myWallet, fontSize = 10.sp) },
                             selected = activeTab == NavigationTab.WALLET || activeTab == NavigationTab.WITHDRAW,
                             onClick = { viewModel.selectTab(NavigationTab.WALLET) },
                             colors = NavigationBarItemDefaults.colors(
@@ -350,7 +353,7 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
 
                         NavigationBarItem(
                             icon = { Icon(Icons.Default.ReceiptLong, contentDescription = "Transactions") },
-                            label = { Text("Activity", fontSize = 10.sp) },
+                            label = { Text(strings.transactions, fontSize = 10.sp) },
                             selected = activeTab == NavigationTab.TRANSACTIONS,
                             onClick = { viewModel.selectTab(NavigationTab.TRANSACTIONS) },
                             colors = NavigationBarItemDefaults.colors(
@@ -365,7 +368,7 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                         if (user.role == UserRole.ADMIN) {
                             NavigationBarItem(
                                 icon = { Icon(Icons.Default.AdminPanelSettings, contentDescription = "Admin") },
-                                label = { Text("Admin", fontSize = 10.sp) },
+                                label = { Text(strings.adminPanel, fontSize = 10.sp) },
                                 selected = activeTab == NavigationTab.ADMIN,
                                 onClick = { viewModel.selectTab(NavigationTab.ADMIN) },
                                 colors = NavigationBarItemDefaults.colors(
@@ -485,6 +488,9 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                                 adminConfig = adminConfig,
                                 pendingWithdrawals = pendingWithdrawals,
                                 pendingDepositRequests = pendingDepositRequests,
+                                allDepositRequests = allDepositRequests,
+                                allWithdrawals = allWithdrawals,
+                                allTransactions = allTransactions,
                                 allUsers = allUsers,
                                 adminLogs = adminLogs,
                                 announcements = announcements,

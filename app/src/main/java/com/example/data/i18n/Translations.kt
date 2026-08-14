@@ -55,7 +55,18 @@ data class AppStrings(
     val pendingWithdrawals: String,
     val rateConfig: String,
     val userManagement: String,
-    val selectLanguage: String
+    val selectLanguage: String,
+    val dashboard: String,
+    val helpAndFaq: String,
+    val webAndDesktop: String,
+    val lightTheme: String,
+    val darkTheme: String,
+    val language: String,
+    val currency: String,
+    val notifications: String,
+    val english: String,
+    val kinyarwanda: String,
+    val french: String
 )
 
 object Translations {
@@ -114,7 +125,18 @@ object Translations {
                 pendingWithdrawals = "Pending Withdrawals",
                 rateConfig = "Reward Rate Configuration",
                 userManagement = "User Management",
-                selectLanguage = "Select Language"
+                selectLanguage = "Select Language",
+                dashboard = "Dashboard",
+                helpAndFaq = "Help & FAQ",
+                webAndDesktop = "Web & Windows App",
+                lightTheme = "Light Theme",
+                darkTheme = "Dark Theme",
+                language = "Language",
+                currency = "Currency",
+                notifications = "Notifications",
+                english = "English",
+                kinyarwanda = "Kinyarwanda",
+                french = "Français"
             )
             Language.RW -> AppStrings(
                 appTitle = "SMART FUTURE CAPITAL (SFC)",
@@ -169,7 +191,18 @@ object Translations {
                 pendingWithdrawals = "Ibibikuzwa Bitarahabwa Uburenganzira",
                 rateConfig = "Igenamiterere ry'Inyungu",
                 userManagement = "Gucunga Abakoresha",
-                selectLanguage = "Hitamo Ururimi"
+                selectLanguage = "Hitamo Ururimi",
+                dashboard = "Ahabanza",
+                helpAndFaq = "Ubufasha & Ibibazo",
+                webAndDesktop = "Porogaramu ya Mudasobwa & Web",
+                lightTheme = "Urumuri (Light)",
+                darkTheme = "Umwijima (Dark)",
+                language = "Ururimi",
+                currency = "Ifaranga",
+                notifications = "Amatangazo",
+                english = "Icyongereza",
+                kinyarwanda = "Ikinyarwanda",
+                french = "Igifaransa"
             )
             Language.FR -> AppStrings(
                 appTitle = "SMART FUTURE CAPITAL (SFC)",
@@ -224,7 +257,18 @@ object Translations {
                 pendingWithdrawals = "Demandes de Retrait en Attente",
                 rateConfig = "Configuration des Taux de Récompense",
                 userManagement = "Gestion des Utilisateurs",
-                selectLanguage = "Choisir la Langue"
+                selectLanguage = "Choisir la Langue",
+                dashboard = "Tableau de Bord",
+                helpAndFaq = "Aide & FAQ",
+                webAndDesktop = "App Web & Windows",
+                lightTheme = "Thème Clair",
+                darkTheme = "Thème Sombre",
+                language = "Langue",
+                currency = "Devise",
+                notifications = "Notifications",
+                english = "Anglais",
+                kinyarwanda = "Kinyarwanda",
+                french = "Français"
             )
         }
     }
