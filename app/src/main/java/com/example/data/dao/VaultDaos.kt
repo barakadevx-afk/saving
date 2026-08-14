@@ -54,7 +54,10 @@ interface WalletDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertWallet(wallet: WalletEntity)
 
-    @Query("UPDATE wallets SET availableBalance = :available, lockedBalance = :locked, totalEarned = :earned, totalDeposited = :deposited, totalWithdrawn = :withdrawn, referralBonus = :referralBonus WHERE userId = :userId")
+    @Update
+    suspend fun updateWallet(wallet: WalletEntity)
+
+    @Query("UPDATE wallets SET availableBalance = :available, lockedBalance = :locked, totalEarned = :earned, totalDeposited = :deposited, totalWithdrawn = :withdrawn, referralBonus = :referralBonus, pendingBonusPercent = :pendingBonusPercent, totalFriendsReferred = :totalFriendsReferred WHERE userId = :userId")
     suspend fun updateWalletBalances(
         userId: String,
         available: Double,
@@ -62,7 +65,9 @@ interface WalletDao {
         earned: Double,
         deposited: Double,
         withdrawn: Double,
-        referralBonus: Double
+        referralBonus: Double,
+        pendingBonusPercent: Double = 0.0,
+        totalFriendsReferred: Int = 0
     )
 }
 

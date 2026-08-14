@@ -48,7 +48,8 @@ class VaultRepository(
                     category = "IMPORTANT",
                     postedBy = "SFC System Admin",
                     timestamp = System.currentTimeMillis(),
-                    isImportant = true
+                    isImportant = true,
+                    imageUrl = "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=800&q=80"
                 )
             )
         }
@@ -75,7 +76,9 @@ class VaultRepository(
                 totalEarned = 6750.0,
                 totalDeposited = 70000.0,
                 totalWithdrawn = 23300.0,
-                referralBonus = 1250.0
+                referralBonus = 1250.0,
+                pendingBonusPercent = 0.005,
+                totalFriendsReferred = 2
             )
             walletDao.insertWallet(jeanWallet)
 
@@ -233,7 +236,7 @@ class VaultRepository(
         val updatedUser = if (!finalReferredBy.isNullOrEmpty()) user.copy(referredBy = finalReferredBy) else user
 
         userDao.insertUser(updatedUser)
-        walletDao.insertWallet(WalletEntity(userId = user.id, availableBalance = 0.0))
+        walletDao.insertWallet(WalletEntity(userId = user.id, availableBalance = 0.0, pendingBonusPercent = 0.0))
 
         // Process referral reward if referredByCode is valid
         if (!finalReferredBy.isNullOrEmpty()) {
@@ -241,10 +244,13 @@ class VaultRepository(
             if (referrer != null) {
                 val referrerWallet = walletDao.getWalletByUserId(referrer.id)
                 if (referrerWallet != null) {
-                    val bonusAmount = 1000.0
-                    val newBonus = referrerWallet.referralBonus + bonusAmount
-                    val newAvailable = referrerWallet.availableBalance + bonusAmount
-                    val newEarned = referrerWallet.totalEarned + bonusAmount
+                    val bonusCashAmount = 1000.0
+                    val bonusYieldBoost = 0.005 // +0.5% bonus yield on next savings cycle
+                    val newBonus = referrerWallet.referralBonus + bonusCashAmount
+                    val newAvailable = referrerWallet.availableBalance + bonusCashAmount
+                    val newEarned = referrerWallet.totalEarned + bonusCashAmount
+                    val newPendingBoost = referrerWallet.pendingBonusPercent + bonusYieldBoost
+                    val newFriendsCount = referrerWallet.totalFriendsReferred + 1
 
                     walletDao.updateWalletBalances(
                         userId = referrer.id,
@@ -253,26 +259,102 @@ class VaultRepository(
                         earned = newEarned,
                         deposited = referrerWallet.totalDeposited,
                         withdrawn = referrerWallet.totalWithdrawn,
-                        referralBonus = newBonus
+                        referralBonus = newBonus,
+                        pendingBonusPercent = newPendingBoost,
+                        totalFriendsReferred = newFriendsCount
                     )
 
                     val bonusTx = TransactionEntity(
                         id = UUID.randomUUID().toString(),
                         userId = referrer.id,
                         type = TransactionType.REFERRAL_BONUS,
-                        amount = bonusAmount,
-                        description = "🎁 Referral Bonus for inviting ${user.fullName}",
+                        amount = bonusCashAmount,
+                        description = "🎁 Referral Bonus for inviting ${user.fullName} (+0.5% boost on next cycle)",
                         status = TransactionStatus.COMPLETED,
                         timestamp = System.currentTimeMillis()
                     )
                     transactionDao.insertTransaction(bonusTx)
+
+                    try {
+                        com.example.notification.NotificationHelper.sendRewardNotification(
+                            context = context,
+                            title = "🎁 Friend Joined via Your Referral Link!",
+                            message = "${user.fullName} registered using your referral code. You earned 1,000 RWF + a +0.5% yield bonus on your next savings cycle!"
+                        )
+                    } catch (e: Exception) {
+                        android.util.Log.e("VaultRepository", "Notification error: ${e.message}")
+                    }
                 }
             }
         }
     }
 
+    suspend fun simulateFriendReferral(referrerUserId: String, friendName: String = "David Mugisha"): String {
+        val referrer = userDao.getUserById(referrerUserId) ?: return "User not found"
+        val refCode = referrer.referralCode
+        if (refCode.isEmpty()) return "Referral code not found"
+
+        val simId = "usr_sim_${System.currentTimeMillis()}"
+        val simPhone = "+250 788 ${(100000..999999).random()}"
+        val simUser = UserEntity(
+            id = simId,
+            email = "friend_${(100..999).random()}@futuresmartcapital.rw",
+            phone = simPhone,
+            fullName = friendName,
+            passwordHash = "simPass123",
+            role = UserRole.USER,
+            language = Language.EN,
+            referralCode = "REF${(1000..9999).random()}",
+            referredBy = refCode
+        )
+
+        registerUser(simUser, refCode)
+        return "SUCCESS"
+    }
+
     suspend fun updateUserLanguage(userId: String, lang: Language) {
         userDao.updateUserLanguage(userId, lang)
+    }
+
+    suspend fun claimWelcomeBonus(userId: String): Result<Double> {
+        val wallet = walletDao.getWalletByUserId(userId) ?: return Result.failure(Exception("Wallet not found"))
+        if (wallet.hasClaimedWelcomeBonus) {
+            return Result.failure(Exception("Welcome bonus has already been claimed!"))
+        }
+
+        val bonusAmount = 1000.0
+        val newAvailable = wallet.availableBalance + bonusAmount
+        val newEarned = wallet.totalEarned + bonusAmount
+
+        val updatedWallet = wallet.copy(
+            availableBalance = newAvailable,
+            totalEarned = newEarned,
+            hasClaimedWelcomeBonus = true
+        )
+        walletDao.updateWallet(updatedWallet)
+
+        val tx = TransactionEntity(
+            id = "tx_wb_${UUID.randomUUID().toString().take(8)}",
+            userId = userId,
+            type = TransactionType.WELCOME_BONUS,
+            amount = bonusAmount,
+            description = "🎁 1,000 RWF Welcome Starter Bonus Claimed",
+            status = TransactionStatus.COMPLETED,
+            timestamp = System.currentTimeMillis()
+        )
+        transactionDao.insertTransaction(tx)
+
+        try {
+            com.example.notification.NotificationHelper.sendRewardNotification(
+                context = context,
+                title = "🎉 Welcome Bonus Claimed!",
+                message = "1,000 RWF has been added to your available funds! Start your first 50% savings cycle now."
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("VaultRepository", "Notification error: ${e.message}")
+        }
+
+        return Result.success(bonusAmount)
     }
 
     // Wallet & Cycles
@@ -317,7 +399,9 @@ class VaultRepository(
                             earned = newEarned,
                             deposited = wallet.totalDeposited,
                             withdrawn = wallet.totalWithdrawn,
-                            referralBonus = wallet.referralBonus
+                            referralBonus = wallet.referralBonus,
+                            pendingBonusPercent = wallet.pendingBonusPercent,
+                            totalFriendsReferred = wallet.totalFriendsReferred
                         )
 
                         // Transaction log for settlement
@@ -390,7 +474,9 @@ class VaultRepository(
 
         val now = System.currentTimeMillis()
         val cycleDurationMs = config.cycleDurationDays * 24 * 60 * 60 * 1000L
-        val expectedReward = amount * rate
+        val appliedBonusRate = wallet.pendingBonusPercent
+        val effectiveRate = rate + appliedBonusRate
+        val expectedReward = amount * effectiveRate
         val cycleId = "#CY-${(100000..999999).random()}"
 
         val newCycle = SavingsCycleEntity(
@@ -398,11 +484,12 @@ class VaultRepository(
             userId = userId,
             tierId = tierId.uppercase(),
             depositAmount = amount,
-            rate = rate,
+            rate = effectiveRate,
             expectedReward = expectedReward,
             startDate = now,
             endDate = now + cycleDurationMs,
-            status = CycleStatus.ACTIVE_LOCK
+            status = CycleStatus.ACTIVE_LOCK,
+            bonusRateApplied = appliedBonusRate
         )
         savingsCycleDao.insertCycle(newCycle)
 
@@ -423,6 +510,7 @@ class VaultRepository(
         val newLocked = wallet.lockedBalance + amount
         val newDeposited = wallet.totalDeposited + amount
 
+        // Reset pendingBonusPercent to 0.0 since it was applied to this cycle
         walletDao.updateWalletBalances(
             userId = userId,
             available = newAvailable,
@@ -430,7 +518,9 @@ class VaultRepository(
             earned = wallet.totalEarned,
             deposited = newDeposited,
             withdrawn = wallet.totalWithdrawn,
-            referralBonus = wallet.referralBonus
+            referralBonus = wallet.referralBonus,
+            pendingBonusPercent = 0.0,
+            totalFriendsReferred = wallet.totalFriendsReferred
         )
 
         val tx = TransactionEntity(
@@ -785,8 +875,10 @@ class VaultRepository(
         content: String,
         category: String = "NEWS",
         isImportant: Boolean = false,
+        imageUrl: String? = null,
         adminId: String = "admin"
     ) {
+        val cleanImageUrl = if (imageUrl.isNullOrBlank()) null else imageUrl.trim()
         val announcement = AnnouncementEntity(
             id = "ann_${UUID.randomUUID().toString().take(8)}",
             title = title,
@@ -794,14 +886,15 @@ class VaultRepository(
             category = category,
             postedBy = "SFC Admin ($adminId)",
             timestamp = System.currentTimeMillis(),
-            isImportant = isImportant
+            isImportant = isImportant,
+            imageUrl = cleanImageUrl
         )
         announcementDao.insertAnnouncement(announcement)
         adminDao.insertAdminLog(
             AdminLogEntity(
                 adminId = adminId,
                 action = "ANNOUNCEMENT_POSTED",
-                details = "Posted announcement: $title ($category)"
+                details = "Posted announcement: $title ($category)${if (cleanImageUrl != null) " [with Image]" else ""}"
             )
         )
     }

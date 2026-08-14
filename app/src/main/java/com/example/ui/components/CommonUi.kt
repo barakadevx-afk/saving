@@ -31,9 +31,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.ui.platform.LocalContext
@@ -856,8 +859,9 @@ fun ActiveCycleProgressCard(
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold
                     )
+                    val bonusText = if (cycle.bonusRateApplied > 0) " (+%.1f%% Referral Boost)".format(cycle.bonusRateApplied * 100) else ""
                     Text(
-                        text = "Principal ($depositFormatted) + 50% Profit (+$rewardFormatted)",
+                        text = "Principal ($depositFormatted) + Profit$bonusText (+$rewardFormatted)",
                         color = GreenSuccess,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold
@@ -961,6 +965,25 @@ fun launchPhoneCallIntent(context: Context, phoneNumber: String = "0792828727") 
     } catch (_: Exception) {}
 }
 
+fun launchUssdDialIntent(context: Context, ussdCode: String = "*182*8*1*1799283#") {
+    try {
+        val encoded = Uri.encode(ussdCode)
+        val intent = Intent(Intent.ACTION_DIAL).apply {
+            data = Uri.parse("tel:$encoded")
+        }
+        context.startActivity(intent)
+    } catch (_: Exception) {}
+}
+
+fun copyToClipboard(context: Context, label: String, text: String) {
+    try {
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+        val clip = ClipData.newPlainText(label, text)
+        clipboard?.setPrimaryClip(clip)
+        Toast.makeText(context, "Copied to clipboard: $text", Toast.LENGTH_SHORT).show()
+    } catch (_: Exception) {}
+}
+
 fun launchWhatsAppIntent(
     context: Context,
     phoneNumber: String = "250792828727",
@@ -978,11 +1001,13 @@ fun DepositModalDialog(
     selectedTier: String,
     strings: AppStrings,
     availableBalance: Double,
+    pendingBonusPercent: Double = 0.0,
     onDismiss: () -> Unit,
     onConfirmDeposit: (payFromAvailable: Boolean) -> Unit,
     onSubmitDepositRequest: (amount: Double, transactionId: String, proofScreenshotUri: String) -> Unit = { _, _, _ -> }
 ) {
     val context = LocalContext.current
+    var activeDepositTab by remember { mutableStateOf(0) } // 0: QR Code, 1: USSD Manual
     var payFromAvailable by remember { mutableStateOf(false) }
     var agreedDisclaimer by remember { mutableStateOf(false) }
     var transactionIdInput by remember { mutableStateOf("") }
@@ -1003,277 +1028,524 @@ fun DepositModalDialog(
         "D" -> 45000.0
         else -> 15000.0
     }
-    val estReward = (amount * 0.02).toInt()
+    val effectiveRate = 0.02 + pendingBonusPercent
+    val estReward = (amount * effectiveRate).toInt()
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = LightSurface)
+            shape = RoundedCornerShape(24.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp)
         ) {
-            Column(
+            androidx.compose.foundation.lazy.LazyColumn(
                 modifier = Modifier
-                    .padding(20.dp)
                     .fillMaxWidth()
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Deposit into Savings Cycle",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = BlueLight,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Text(text = "Tier $selectedTier Deposit", fontSize = 12.sp, color = TextSecondary)
-                        Text(
-                            text = "%,d RWF".format(amount.toInt()),
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = BluePrimary
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Estimated Reward: +%,d RWF (2.00%% in 3 days)".format(estReward),
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = GreenSuccess
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Payment Merchant Code Instructions Box
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = GoldLight,
-                    border = BorderStroke(1.dp, GoldAccent),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            text = "💳 Mobile Money Payment Code: 1799283",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp,
-                            color = NavyDark
-                        )
-                        Text(
-                            text = "(Alternative code: 1799273)",
-                            fontSize = 11.sp,
-                            color = TextSecondary
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "📌 Min Deposit: 6,000 RWF | Max Deposit: 1,000,000 RWF",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = TextPrimary
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            text = "After sending money, input your Transaction ID and attach the payment screenshot below for Admin verification.",
-                            fontSize = 11.sp,
-                            color = TextSecondary,
-                            lineHeight = 15.sp
-                        )
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(
-                                onClick = { launchPhoneCallIntent(context, "0792828727") },
-                                modifier = Modifier.weight(1f).testTag("call_admin_btn"),
-                                border = BorderStroke(1.dp, BluePrimary),
-                                shape = RoundedCornerShape(10.dp),
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                // Header
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(CircleShape)
+                                    .background(BentoHeroCardBg),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(14.dp), tint = BluePrimary)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Call Admin", fontSize = 11.sp, color = BluePrimary, fontWeight = FontWeight.Bold)
+                                Icon(Icons.Default.AddCard, contentDescription = null, tint = BentoPrimaryBlue, modifier = Modifier.size(20.dp))
                             }
-
-                            Button(
-                                onClick = {
-                                    launchWhatsAppIntent(
-                                        context = context,
-                                        phoneNumber = "250792828727",
-                                        message = "Hello Admin, I paid %,d RWF to code 1799283. Tx ID: %s. Please verify and credit my account.".format(amount.toInt(), transactionIdInput.ifBlank { "N/A" })
-                                    )
-                                },
-                                modifier = Modifier.weight(1f).testTag("whatsapp_admin_btn"),
-                                colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
-                                shape = RoundedCornerShape(10.dp),
-                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
-                            ) {
-                                Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("WhatsApp", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Column {
+                                Text(
+                                    text = "Deposit into Savings Cycle",
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "3-Day 50% Profit Vault",
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
                             }
+                        }
+                        IconButton(onClick = onDismiss, modifier = Modifier.size(32.dp)) {
+                            Icon(Icons.Default.Close, contentDescription = "Close", tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(text = "Payment Method", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = !payFromAvailable,
-                        onClick = { payFromAvailable = false }
-                    )
-                    Text(text = "MoMo Code (1799283 / 1799273)", fontSize = 13.sp, color = TextPrimary)
+                // Tier Plan Summary Banner
+                item {
+                    Surface(
+                        shape = RoundedCornerShape(16.dp),
+                        color = BentoHeroCardBg,
+                        border = BorderStroke(1.dp, BentoPrimaryBlue.copy(alpha = 0.3f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(14.dp)) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(text = "Tier $selectedTier Deposit", fontSize = 12.sp, color = BentoHeroText.copy(alpha = 0.75f), fontWeight = FontWeight.Bold)
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = GoldAccent.copy(alpha = 0.3f)
+                                ) {
+                                    Text(
+                                        text = "3-Day Lock 🔒",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = NavyDark,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = "%,d RWF".format(amount.toInt()),
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Black,
+                                color = BentoHeroText
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            val bonusRateLabel = if (pendingBonusPercent > 0) " (2.00%% + %.1f%% Referral Boost in 3 days)".format(pendingBonusPercent * 100) else " (2.00%% in 3 days)"
+                            Text(
+                                text = "Estimated Reward: +%,d RWF$bonusRateLabel".format(estReward),
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = GreenSuccess
+                            )
+                        }
+                    }
                 }
 
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(
-                        selected = payFromAvailable,
-                        onClick = { payFromAvailable = true }
-                    )
-                    Text(
-                        text = "Available Balance (%,d RWF)".format(availableBalance.toInt()),
-                        fontSize = 13.sp,
-                        color = if (availableBalance >= amount) TextPrimary else RedDanger
-                    )
-                }
-
-                if (!payFromAvailable) {
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    OutlinedTextField(
-                        value = transactionIdInput,
-                        onValueChange = { transactionIdInput = it },
-                        label = { Text("Transaction ID / MoMo Reference No.*") },
-                        placeholder = { Text("e.g. 1829302910") },
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth().testTag("deposit_tx_id_input")
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    Text(text = "Upload Payment Screenshot Proof*", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    if (proofScreenshotUri.isNotEmpty()) {
+                // Payment Method Selector
+                item {
+                    Text(text = "Payment Option", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = Color(0xFFF1F5F9),
-                            border = BorderStroke(1.dp, BluePrimary),
-                            modifier = Modifier.fillMaxWidth()
+                            color = if (!payFromAvailable) BentoPrimaryBlue else MaterialTheme.colorScheme.surfaceVariant,
+                            border = BorderStroke(1.dp, if (!payFromAvailable) BentoPrimaryBlue else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { payFromAvailable = false }
                         ) {
                             Column(
                                 modifier = Modifier.padding(10.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                AsyncImage(
-                                    model = proofScreenshotUri,
-                                    contentDescription = "Payment Screenshot",
-                                    modifier = Modifier
-                                        .height(100.dp)
-                                        .clip(RoundedCornerShape(8.dp))
+                                Text(
+                                    text = "📱 MTN MoMo",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (!payFromAvailable) Color.White else MaterialTheme.colorScheme.onSurface
                                 )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = GreenSuccess, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Screenshot Attached", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = GreenSuccess)
-                                    Spacer(modifier = Modifier.width(12.dp))
-                                    TextButton(
-                                        onClick = { proofScreenshotUri = "" },
-                                        contentPadding = PaddingValues(0.dp)
-                                    ) {
-                                        Text("Remove", fontSize = 11.sp, color = RedDanger)
-                                    }
-                                }
+                                Text(
+                                    text = "Code: 1799283",
+                                    fontSize = 10.sp,
+                                    color = if (!payFromAvailable) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
                             }
                         }
-                    } else {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            OutlinedButton(
-                                onClick = { photoPickerLauncher.launch("image/*") },
-                                modifier = Modifier.weight(1f).testTag("upload_screenshot_btn"),
-                                shape = RoundedCornerShape(10.dp)
-                            ) {
-                                Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Upload Image", fontSize = 11.sp)
-                            }
 
-                            TextButton(
-                                onClick = { proofScreenshotUri = "https://picsum.photos/seed/momo_receipt_${System.currentTimeMillis()}/400/600" },
-                                modifier = Modifier.testTag("sample_screenshot_btn")
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (payFromAvailable) BentoPrimaryBlue else MaterialTheme.colorScheme.surfaceVariant,
+                            border = BorderStroke(1.dp, if (payFromAvailable) BentoPrimaryBlue else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)),
+                            modifier = Modifier
+                                .weight(1f)
+                                .clickable { payFromAvailable = true }
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(10.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Text("Use Sample Receipt 🖼️", fontSize = 11.sp, color = BluePrimary)
+                                Text(
+                                    text = "💰 Vault Balance",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (payFromAvailable) Color.White else MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "%,d RWF".format(availableBalance.toInt()),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = if (payFromAvailable) Color.White.copy(alpha = 0.8f) else if (availableBalance >= amount) GreenSuccess else RedDanger
+                                )
                             }
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                if (!payFromAvailable) {
+                    // Tabs: 0: Scan QR Code | 1: Dial USSD Manual
+                    item {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(modifier = Modifier.padding(4.dp)) {
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (activeDepositTab == 0) MaterialTheme.colorScheme.primary else Color.Transparent)
+                                        .clickable { activeDepositTab = 0 }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.Default.QrCode2,
+                                            contentDescription = null,
+                                            tint = if (activeDepositTab == 0) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Scan QR Code",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (activeDepositTab == 0) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                }
 
-                TransparencyNoticeBanner(
-                    text = "Cycle duration is 3 days. Funds will be locked and cannot be withdrawn until completion."
-                )
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (activeDepositTab == 1) MaterialTheme.colorScheme.primary else Color.Transparent)
+                                        .clickable { activeDepositTab = 1 }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            Icons.Default.Dialpad,
+                                            contentDescription = null,
+                                            tint = if (activeDepositTab == 1) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "USSD Manual",
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (activeDepositTab == 1) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                    if (activeDepositTab == 0) {
+                        // QR Code View
+                        item {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.4f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(14.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Surface(
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = GoldAccent
+                                    ) {
+                                        Text(
+                                            text = "MTN MOMO OFFICIAL MERCHANT QR",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = NavyDark,
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp)
+                                        )
+                                    }
 
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.clickable { agreedDisclaimer = !agreedDisclaimer }
-                ) {
-                    Checkbox(
-                        checked = agreedDisclaimer,
-                        onCheckedChange = { agreedDisclaimer = it }
-                    )
-                    Text(
-                        text = "I understand rewards are system-defined incentives, not guaranteed profit.",
-                        fontSize = 11.sp,
-                        color = TextSecondary,
-                        lineHeight = 14.sp
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    // QR Code Image Container
+                                    Surface(
+                                        shape = RoundedCornerShape(14.dp),
+                                        color = Color.White,
+                                        border = BorderStroke(2.dp, GoldAccent),
+                                        shadowElevation = 2.dp,
+                                        modifier = Modifier.size(180.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier.fillMaxSize(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            AsyncImage(
+                                                model = "https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=*182*8*1*1799283%23&color=001A40",
+                                                contentDescription = "MTN Merchant Payment QR Code",
+                                                modifier = Modifier
+                                                    .size(160.dp)
+                                                    .padding(6.dp)
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    Text(
+                                        text = "Smart Future Capital (SFC)",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "Merchant Code: 1799283  •  Alt: 1799273",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = GoldDark
+                                    )
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        OutlinedButton(
+                                            onClick = { copyToClipboard(context, "Merchant Code", "1799283") },
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                                        ) {
+                                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Copy Code", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        }
+
+                                        Button(
+                                            onClick = { launchUssdDialIntent(context, "*182*8*1*1799283#") },
+                                            modifier = Modifier.weight(1f),
+                                            colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = NavyDark),
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                                        ) {
+                                            Icon(Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(14.dp))
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Dial USSD", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // USSD Manual Instructions View
+                        item {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                border = BorderStroke(1.dp, BentoPrimaryBlue.copy(alpha = 0.3f)),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(modifier = Modifier.padding(14.dp)) {
+                                    Text(
+                                        text = "⚡ Step-by-Step USSD Payment",
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 13.sp,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text(text = "1. Dial: *182*8*1*1799283# on MTN", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
+                                        Text(text = "2. Enter Deposit Amount: %,d RWF".format(amount.toInt()), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = BentoPrimaryBlue)
+                                        Text(text = "3. Confirm recipient name: SMART FUTURE CAPITAL / BARAKA", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
+                                        Text(text = "4. Enter your MoMo PIN to approve payment", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
+                                        Text(text = "5. Copy Transaction ID from SMS receipt and paste below", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
+                                    }
+
+                                    Spacer(modifier = Modifier.height(10.dp))
+
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        OutlinedButton(
+                                            onClick = { launchPhoneCallIntent(context, "0792828727") },
+                                            modifier = Modifier.weight(1f).testTag("call_admin_btn"),
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                                        ) {
+                                            Icon(Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(14.dp), tint = BentoPrimaryBlue)
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("Call Admin", fontSize = 11.sp, color = BentoPrimaryBlue, fontWeight = FontWeight.Bold)
+                                        }
+
+                                        Button(
+                                            onClick = {
+                                                launchWhatsAppIntent(
+                                                    context = context,
+                                                    phoneNumber = "250792828727",
+                                                    message = "Hello Admin, I paid %,d RWF to code 1799283. Tx ID: %s. Please verify and credit my account.".format(amount.toInt(), transactionIdInput.ifBlank { "N/A" })
+                                                )
+                                            },
+                                            modifier = Modifier.weight(1f).testTag("whatsapp_admin_btn"),
+                                            colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 6.dp)
+                                        ) {
+                                            Icon(Icons.Default.Send, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text("WhatsApp", fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // Transaction ID Input
+                    item {
+                        OutlinedTextField(
+                            value = transactionIdInput,
+                            onValueChange = { transactionIdInput = it },
+                            label = { Text("Transaction ID / MoMo Reference No.*") },
+                            placeholder = { Text("e.g. 1829302910") },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth().testTag("deposit_tx_id_input")
+                        )
+                    }
+
+                    // Screenshot Upload
+                    item {
+                        Text(text = "Upload Payment Screenshot Proof*", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                        Spacer(modifier = Modifier.height(4.dp))
+
+                        if (proofScreenshotUri.isNotEmpty()) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                border = BorderStroke(1.dp, BentoPrimaryBlue),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(10.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    AsyncImage(
+                                        model = proofScreenshotUri,
+                                        contentDescription = "Payment Screenshot",
+                                        modifier = Modifier
+                                            .height(100.dp)
+                                            .clip(RoundedCornerShape(8.dp))
+                                    )
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = GreenSuccess, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("Screenshot Attached", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = GreenSuccess)
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        TextButton(
+                                            onClick = { proofScreenshotUri = "" },
+                                            contentPadding = PaddingValues(0.dp)
+                                        ) {
+                                            Text("Remove", fontSize = 11.sp, color = RedDanger)
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(
+                                    onClick = { photoPickerLauncher.launch("image/*") },
+                                    modifier = Modifier.weight(1f).testTag("upload_screenshot_btn"),
+                                    shape = RoundedCornerShape(10.dp)
+                                ) {
+                                    Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("Upload Image", fontSize = 11.sp)
+                                }
+
+                                TextButton(
+                                    onClick = { proofScreenshotUri = "https://picsum.photos/seed/momo_receipt_${System.currentTimeMillis()}/400/600" },
+                                    modifier = Modifier.testTag("sample_screenshot_btn")
+                                ) {
+                                    Text("Use Sample Receipt 🖼️", fontSize = 11.sp, color = BentoPrimaryBlue)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Disclaimer Notice
+                item {
+                    TransparencyNoticeBanner(
+                        text = "Cycle duration is 3 days. Funds will be locked and cannot be withdrawn until completion."
                     )
                 }
 
-                Spacer(modifier = Modifier.height(14.dp))
+                // Checkbox Agreement
+                item {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.clickable { agreedDisclaimer = !agreedDisclaimer }
+                    ) {
+                        Checkbox(
+                            checked = agreedDisclaimer,
+                            onCheckedChange = { agreedDisclaimer = it }
+                        )
+                        Text(
+                            text = "I understand rewards are system-defined incentives, not guaranteed profit.",
+                            fontSize = 11.sp,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                            lineHeight = 14.sp
+                        )
+                    }
+                }
 
-                Button(
-                    onClick = {
-                        if (payFromAvailable) {
-                            onConfirmDeposit(true)
-                        } else {
-                            onSubmitDepositRequest(amount, transactionIdInput, proofScreenshotUri)
-                        }
-                    },
-                    enabled = agreedDisclaimer && (payFromAvailable && availableBalance >= amount || !payFromAvailable && transactionIdInput.isNotBlank()),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("confirm_deposit_btn"),
-                    colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    Text(
-                        text = if (payFromAvailable) "Confirm & Start 3-Day Cycle 🔒" else "Submit Deposit for Verification 📤",
-                        fontWeight = FontWeight.Bold
-                    )
+                // Submit Button
+                item {
+                    Button(
+                        onClick = {
+                            if (payFromAvailable) {
+                                onConfirmDeposit(true)
+                            } else {
+                                onSubmitDepositRequest(amount, transactionIdInput, proofScreenshotUri)
+                            }
+                        },
+                        enabled = agreedDisclaimer && (payFromAvailable && availableBalance >= amount || !payFromAvailable && transactionIdInput.isNotBlank()),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("confirm_deposit_btn"),
+                        colors = ButtonDefaults.buttonColors(containerColor = BentoPrimaryBlue),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = if (payFromAvailable) "Confirm & Start 3-Day Cycle 🔒" else "Submit Deposit for Verification 📤",
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
                 }
             }
         }
@@ -1327,7 +1599,7 @@ fun TransactionItemRow(tx: TransactionEntity) {
 
     // Color coding logic for amount label & badge
     val amountColor = when {
-        tx.type == TransactionType.CYCLE_REWARD || tx.type == TransactionType.REFERRAL_BONUS -> GreenSuccess
+        tx.type == TransactionType.CYCLE_REWARD || tx.type == TransactionType.REFERRAL_BONUS || tx.type == TransactionType.WELCOME_BONUS -> GreenSuccess
         tx.type == TransactionType.WITHDRAWAL -> Color(0xFFEF4444) // Bright Red
         tx.type == TransactionType.DEPOSIT -> BentoPrimaryBlue
         else -> TextPrimary
@@ -1347,6 +1619,7 @@ fun TransactionItemRow(tx: TransactionEntity) {
         TransactionStatus.COMPLETED, TransactionStatus.APPROVED -> when (tx.type) {
             TransactionType.CYCLE_REWARD -> Triple(Icons.Default.AutoAwesome, BentoEarnedBadgeBg, BentoEarnedBadgeText)
             TransactionType.REFERRAL_BONUS -> Triple(Icons.Default.CardGiftcard, GoldLight, OrangeWarning)
+            TransactionType.WELCOME_BONUS -> Triple(Icons.Default.Celebration, GoldLight, OrangeWarning)
             TransactionType.WITHDRAWAL -> Triple(Icons.Default.ArrowUpward, BentoLockedBadgeBg, BentoLockedBadgeText)
             TransactionType.DEPOSIT -> Triple(Icons.Default.ArrowDownward, BentoHeroCardBg, BentoPrimaryBlue)
             else -> Triple(Icons.Default.CheckCircle, BentoEarnedBadgeBg, BentoEarnedBadgeText)
@@ -1855,6 +2128,25 @@ fun AnnouncementsDialog(
                                     }
 
                                     Spacer(modifier = Modifier.height(6.dp))
+
+                                    // Display Announcement Image if present
+                                    if (!item.imageUrl.isNullOrBlank()) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .heightIn(min = 120.dp, max = 180.dp)
+                                                .padding(bottom = 8.dp)
+                                                .clip(RoundedCornerShape(10.dp))
+                                                .background(Color(0xFFE2E8F0))
+                                        ) {
+                                            AsyncImage(
+                                                model = item.imageUrl,
+                                                contentDescription = item.title,
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                            )
+                                        }
+                                    }
 
                                     Text(text = item.title, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextPrimary)
                                     Spacer(modifier = Modifier.height(4.dp))

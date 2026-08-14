@@ -197,14 +197,21 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
             if (user != null && (user.passwordHash == pass || (user.role == UserRole.ADMIN && (pass == "BARAKA@123!" || pass == "admin123" || pass == "1799283")))) {
                 _currentUser.value = user
                 currencyPrefsRepo.setLanguage(user.language)
+                if (user.role == UserRole.ADMIN) {
+                    _activeTab.value = NavigationTab.ADMIN
+                    showMessage("Welcome, Admin ${user.fullName} ⚡")
+                } else {
+                    _activeTab.value = NavigationTab.DASHBOARD
+                    showMessage("Welcome back, ${user.fullName}!")
+                }
                 onSuccess()
             } else {
-                showMessage("Invalid credentials. Try Admin Phone 0792828727 with BARAKA@123!")
+                showMessage("Invalid phone number or password. Please verify your credentials.")
             }
         }
     }
 
-    fun register(phone: String, fullName: String, pass: String, role: UserRole, referralCode: String = "") {
+    fun register(phone: String, fullName: String, pass: String, referralCode: String = "") {
         viewModelScope.launch {
             val id = "usr_${System.currentTimeMillis()}"
             val cleanPhone = phone.trim()
@@ -216,13 +223,38 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
                 phone = cleanPhone,
                 fullName = fullName,
                 passwordHash = pass,
-                role = role,
+                role = UserRole.USER,
                 language = currentLanguage.value,
                 referralCode = userRefCode
             )
             repository.registerUser(newUser, referralCode)
             _currentUser.value = newUser
+            _activeTab.value = NavigationTab.DASHBOARD
             showMessage("Account created successfully! Welcome to Future Smart Capital.")
+        }
+    }
+
+    fun simulateFriendReferral(friendName: String = "David Mugisha") {
+        val user = _currentUser.value ?: return
+        viewModelScope.launch {
+            val res = repository.simulateFriendReferral(user.id, friendName)
+            if (res == "SUCCESS") {
+                showMessage("🎉 $friendName registered with your link! +1,000 RWF & +0.5% next-cycle yield boost added!")
+            } else {
+                showMessage("Referral simulation failed: $res")
+            }
+        }
+    }
+
+    fun claimWelcomeBonus() {
+        val user = _currentUser.value ?: return
+        viewModelScope.launch {
+            val res = repository.claimWelcomeBonus(user.id)
+            if (res.isSuccess) {
+                showMessage("🎉 1,000 RWF Welcome Bonus claimed! Added to your funds.")
+            } else {
+                showMessage(res.exceptionOrNull()?.message ?: "Failed to claim welcome bonus.")
+            }
         }
     }
 
@@ -231,7 +263,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val result = repository.createDeposit(user.id, tierId, payFromAvailable)
             if (result == "SUCCESS") {
-                showMessage("Deposit successful! 3-day cycle started 🔒")
+                showMessage("Deposit successful! 3-day cycle started with referral boosts applied 🔒✨")
                 closeDepositModal()
             } else {
                 showMessage("Error: $result")
@@ -372,10 +404,16 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun postAnnouncement(title: String, content: String, category: String = "NEWS", isImportant: Boolean = false) {
+    fun postAnnouncement(
+        title: String,
+        content: String,
+        category: String = "NEWS",
+        isImportant: Boolean = false,
+        imageUrl: String? = null
+    ) {
         val admin = _currentUser.value ?: return
         viewModelScope.launch {
-            repository.postAnnouncement(title, content, category, isImportant, admin.id)
+            repository.postAnnouncement(title, content, category, isImportant, imageUrl, admin.id)
             showMessage("Announcement posted successfully! 📢")
         }
     }

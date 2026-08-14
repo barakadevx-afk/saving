@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -17,12 +18,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.data.i18n.AppStrings
 import com.example.data.model.*
 import com.example.ui.components.*
@@ -49,7 +53,9 @@ fun DashboardScreen(
     onWithdrawClick: () -> Unit,
     onFaqClick: () -> Unit = {},
     onWebDownloadClick: () -> Unit = {},
-    onOpenAnnouncements: () -> Unit = {}
+    onOpenAnnouncements: () -> Unit = {},
+    onSimulateReferral: (String) -> Unit = {},
+    onClaimWelcomeBonus: () -> Unit = {}
 ) {
     if (isLoading) {
         BentoDashboardSkeletonScreen()
@@ -62,6 +68,7 @@ fun DashboardScreen(
     val deposited = wallet?.totalDeposited ?: 70000.0
     val withdrawn = wallet?.totalWithdrawn ?: 23300.0
     val referralBonus = wallet?.referralBonus ?: 1250.0
+    val hasClaimedBonus = wallet?.hasClaimedWelcomeBonus ?: false
 
     val activeCycle = cycles.find { it.status == CycleStatus.ACTIVE_LOCK } ?: cycles.firstOrNull()
 
@@ -122,6 +129,163 @@ fun DashboardScreen(
             }
         }
 
+        // 🎁 Welcome Starter Bonus Card (1,000 RWF Free Starter Funds)
+        if (!hasClaimedBonus) {
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("welcome_bonus_card"),
+                    shape = RoundedCornerShape(24.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFF001A40)),
+                    border = BorderStroke(
+                        1.5.dp,
+                        Brush.horizontalGradient(listOf(GoldAccent, Color(0xFFFBBF24), GoldAccent))
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                ) {
+                    Box(modifier = Modifier.fillMaxWidth()) {
+                        Canvas(modifier = Modifier.matchParentSize()) {
+                            drawCircle(
+                                brush = Brush.radialGradient(
+                                    colors = listOf(GoldAccent.copy(alpha = 0.22f), Color.Transparent),
+                                    center = Offset(size.width * 0.9f, size.height * 0.2f),
+                                    radius = size.width * 0.5f
+                                )
+                            )
+                        }
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(18.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = GoldAccent,
+                                    contentColor = NavyDark
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Celebration,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(14.dp),
+                                            tint = NavyDark
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = "FREE WELCOME GIFT 🎁",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Black
+                                        )
+                                    }
+                                }
+
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = Color.White.copy(alpha = 0.15f),
+                                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.25f))
+                                ) {
+                                    Text(
+                                        text = "Instant 1,000 RWF ⚡",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = GoldAccent,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(44.dp)
+                                        .background(
+                                            Brush.linearGradient(listOf(GoldAccent, Color(0xFFD97706))),
+                                            CircleShape
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CardGiftcard,
+                                        contentDescription = "Welcome Bonus",
+                                        tint = NavyDark,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "1,000 RWF Welcome Bonus",
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = Color.White,
+                                        letterSpacing = (-0.3).sp
+                                    )
+                                    Text(
+                                        text = "Claim your free starter funds now and add them directly to your available balance!",
+                                        fontSize = 11.sp,
+                                        color = Color.White.copy(alpha = 0.82f),
+                                        lineHeight = 15.sp
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            Button(
+                                onClick = onClaimWelcomeBonus,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(46.dp)
+                                    .testTag("claim_welcome_bonus_btn"),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = GoldAccent,
+                                    contentColor = NavyDark
+                                ),
+                                shape = RoundedCornerShape(12.dp),
+                                elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.Savings,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = NavyDark
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Claim 1,000 RWF & Add to Funds 🎉",
+                                        fontWeight = FontWeight.Black,
+                                        fontSize = 13.sp,
+                                        color = NavyDark
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Latest Announcement Marquee Banner
         if (announcements.isNotEmpty()) {
             item {
@@ -147,21 +311,32 @@ fun DashboardScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.weight(1f)
                         ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .background(
-                                        if (latest.isImportant) GoldAccent else BluePrimary,
-                                        CircleShape
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    Icons.Default.Campaign,
-                                    contentDescription = "Announcement",
-                                    tint = Color.White,
-                                    modifier = Modifier.size(18.dp)
+                            if (!latest.imageUrl.isNullOrBlank()) {
+                                AsyncImage(
+                                    model = latest.imageUrl,
+                                    contentDescription = latest.title,
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(8.dp)),
+                                    contentScale = androidx.compose.ui.layout.ContentScale.Crop
                                 )
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .background(
+                                            if (latest.isImportant) GoldAccent else BluePrimary,
+                                            CircleShape
+                                        ),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Default.Campaign,
+                                        contentDescription = "Announcement",
+                                        tint = Color.White,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             }
 
                             Spacer(modifier = Modifier.width(10.dp))
@@ -397,8 +572,10 @@ fun DashboardScreen(
         item {
             ReferralProgramCard(
                 user = user,
+                wallet = wallet,
                 referralBonus = referralBonus,
-                referredUsers = referredUsers
+                referredUsers = referredUsers,
+                onSimulateReferral = onSimulateReferral
             )
         }
 
@@ -811,14 +988,18 @@ fun TransactionItemRow(tx: TransactionEntity) {
 @Composable
 fun ReferralProgramCard(
     user: UserEntity,
+    wallet: WalletEntity?,
     referralBonus: Double,
-    referredUsers: List<UserEntity>
+    referredUsers: List<UserEntity>,
+    onSimulateReferral: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val referralLink = "https://futuresmartcapital.rw/ref/${user.referralCode}"
+    val pendingBonusRate = wallet?.pendingBonusPercent ?: 0.0
+    val bonusPercentString = "+%.1f%%".format(pendingBonusRate * 100)
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().testTag("referral_program_card"),
         shape = RoundedCornerShape(28.dp),
         colors = CardDefaults.cardColors(containerColor = BentoCardBg),
         border = BorderStroke(1.dp, BentoBorder)
@@ -833,7 +1014,7 @@ fun ReferralProgramCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(44.dp)
                             .background(GoldLight, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
@@ -841,19 +1022,19 @@ fun ReferralProgramCard(
                             imageVector = Icons.Default.CardGiftcard,
                             contentDescription = "Referral",
                             tint = OrangeWarning,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = "🎁 Invite Friends & Earn 1,000 RWF",
+                            text = "🎁 Refer a Friend & Earn Cycle Boost",
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             color = TextPrimary
                         )
                         Text(
-                            text = "Get 1,000 RWF instant bonus for every friend who joins!",
+                            text = "Earn +0.5% bonus profit percentage on your next savings cycle!",
                             fontSize = 11.sp,
                             color = TextSecondary
                         )
@@ -862,6 +1043,68 @@ fun ReferralProgramCard(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // Bonus Percentage Cycle Boost Highlight Badge
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = if (pendingBonusRate > 0) GoldLight else LightBackground,
+                border = BorderStroke(1.dp, if (pendingBonusRate > 0) GoldAccent else BentoBorder),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .background(if (pendingBonusRate > 0) OrangeWarning.copy(alpha = 0.15f) else Color.LightGray.copy(alpha = 0.2f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Bolt,
+                                contentDescription = "Cycle Boost",
+                                tint = if (pendingBonusRate > 0) OrangeWarning else Color.Gray,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = "Next-Cycle Profit Boost",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = if (pendingBonusRate > 0) "Applied automatically on your next deposit!" else "Invite a friend to activate +0.5% boost",
+                                fontSize = 10.sp,
+                                color = TextSecondary
+                            )
+                        }
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (pendingBonusRate > 0) OrangeWarning else Color.Gray
+                    ) {
+                        Text(
+                            text = if (pendingBonusRate > 0) "$bonusPercentString BOOST 🔥" else "0.0% BOOST",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Unique Referral Code & Link Box
             Surface(
@@ -896,7 +1139,7 @@ fun ReferralProgramCard(
                                 val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
                                 val clip = android.content.ClipData.newPlainText("Referral Link", referralLink)
                                 clipboard.setPrimaryClip(clip)
-                                android.widget.Toast.makeText(context, "Link copied to clipboard! 📋", android.widget.Toast.LENGTH_SHORT).show()
+                                android.widget.Toast.makeText(context, "Referral link copied to clipboard! 📋", android.widget.Toast.LENGTH_SHORT).show()
                             },
                             modifier = Modifier.weight(1f).testTag("copy_ref_link_btn"),
                             colors = ButtonDefaults.buttonColors(containerColor = BentoPrimaryBlue),
@@ -913,7 +1156,7 @@ fun ReferralProgramCard(
                                     type = "text/plain"
                                     putExtra(
                                         android.content.Intent.EXTRA_TEXT,
-                                        "Join Future Smart Capital and earn guaranteed 50% profit in 3 days! Sign up with my link: $referralLink"
+                                        "Join Future Smart Capital and earn guaranteed profit yields in 3 days! Register with my referral link: $referralLink"
                                     )
                                 }
                                 context.startActivity(android.content.Intent.createChooser(shareIntent, "Invite Friends via"))
@@ -930,6 +1173,24 @@ fun ReferralProgramCard(
                 }
             }
 
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Demo / Test Action: Simulate Friend Referral
+            OutlinedButton(
+                onClick = {
+                    val randomFriends = listOf("Eric Mugisha", "Aline Uwase", "Patrick Hakizimana", "Diane Keza", "Jean-Paul Habimana")
+                    onSimulateReferral(randomFriends.random())
+                },
+                modifier = Modifier.fillMaxWidth().testTag("simulate_referral_btn"),
+                shape = RoundedCornerShape(12.dp),
+                border = BorderStroke(1.dp, GoldAccent),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = OrangeWarning)
+            ) {
+                Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("⚡ Test Referral: Simulate Friend Joining", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
             // Stats Summary
@@ -940,7 +1201,7 @@ fun ReferralProgramCard(
                 StatOverviewCard(
                     title = "Friends Invited",
                     value = "${referredUsers.size}",
-                    subtitle = "Successful Signups",
+                    subtitle = "Registered",
                     icon = Icons.Default.Group,
                     iconBgColor = BlueLight,
                     iconTint = BluePrimary,
@@ -948,12 +1209,22 @@ fun ReferralProgramCard(
                 )
 
                 StatOverviewCard(
-                    title = "Bonus Earned",
-                    value = "%,d RWF".format(referralBonus.toInt()),
-                    subtitle = "Credited to Wallet",
-                    icon = Icons.Default.MonetizationOn,
+                    title = "Next Boost",
+                    value = bonusPercentString,
+                    subtitle = "Cycle Yield Rate",
+                    icon = Icons.Default.Bolt,
                     iconBgColor = GoldLight,
                     iconTint = OrangeWarning,
+                    modifier = Modifier.weight(1f)
+                )
+
+                StatOverviewCard(
+                    title = "Instant Cash",
+                    value = "%,d RWF".format(referralBonus.toInt()),
+                    subtitle = "Wallet Bonus",
+                    icon = Icons.Default.MonetizationOn,
+                    iconBgColor = GreenLight,
+                    iconTint = GreenSuccess,
                     modifier = Modifier.weight(1f)
                 )
             }
@@ -962,7 +1233,7 @@ fun ReferralProgramCard(
             if (referredUsers.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Invited Friends History (${referredUsers.size})",
+                    text = "Invited Friends (${referredUsers.size})",
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary
@@ -1014,8 +1285,8 @@ fun ReferralProgramCard(
                                 color = GreenLight
                             ) {
                                 Text(
-                                    text = "+1,000 RWF ⚡",
-                                    fontSize = 11.sp,
+                                    text = "+0.5% Yield & 1k RWF ⚡",
+                                    fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = GreenSuccess,
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -1027,7 +1298,7 @@ fun ReferralProgramCard(
             } else {
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(
-                    text = "💡 Tip: Share your link on WhatsApp, Facebook, or Telegram to earn your first 1,000 RWF bonus!",
+                    text = "💡 Tip: Share your unique referral link to earn +0.5% bonus percentage on your next savings cycle for every friend who joins!",
                     fontSize = 12.sp,
                     color = TextSecondary,
                     modifier = Modifier.padding(vertical = 4.dp)

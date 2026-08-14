@@ -43,7 +43,7 @@ fun TransactionsScreen(
         .sumOf { it.amount }
 
     val totalRewardsEarned = transactions
-        .filter { (it.type == TransactionType.CYCLE_REWARD || it.type == TransactionType.REFERRAL_BONUS) && it.status == TransactionStatus.COMPLETED }
+        .filter { (it.type == TransactionType.CYCLE_REWARD || it.type == TransactionType.REFERRAL_BONUS || it.type == TransactionType.WELCOME_BONUS) && it.status == TransactionStatus.COMPLETED }
         .sumOf { it.amount }
 
     val totalWithdrawn = transactions
@@ -56,7 +56,7 @@ fun TransactionsScreen(
         val matchesCategory = when (selectedFilter) {
             TxFilterMode.ALL -> true
             TxFilterMode.PENDING -> tx.status == TransactionStatus.PENDING || tx.status == TransactionStatus.LOCKED
-            TxFilterMode.REWARDED -> (tx.type == TransactionType.CYCLE_REWARD || tx.type == TransactionType.REFERRAL_BONUS) && tx.status == TransactionStatus.COMPLETED
+            TxFilterMode.REWARDED -> (tx.type == TransactionType.CYCLE_REWARD || tx.type == TransactionType.REFERRAL_BONUS || tx.type == TransactionType.WELCOME_BONUS) && tx.status == TransactionStatus.COMPLETED
             TxFilterMode.DEPOSITS -> tx.type == TransactionType.DEPOSIT
             TxFilterMode.WITHDRAWALS -> tx.type == TransactionType.WITHDRAWAL
         }

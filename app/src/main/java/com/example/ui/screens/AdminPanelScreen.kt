@@ -51,7 +51,7 @@ fun AdminPanelScreen(
     onAddFundsToUser: (userId: String, amount: Double, note: String) -> Unit = { _, _, _ -> },
     onAddNewUserOrAdmin: (fullName: String, phone: String, email: String, pass: String, role: UserRole) -> Unit = { _, _, _, _, _ -> },
     onUpdateUserRole: (userId: String, newRole: UserRole) -> Unit = { _, _ -> },
-    onPostAnnouncement: (title: String, content: String, category: String, isImportant: Boolean) -> Unit = { _, _, _, _ -> },
+    onPostAnnouncement: (title: String, content: String, category: String, isImportant: Boolean, imageUrl: String?) -> Unit = { _, _, _, _, _ -> },
     onDeleteAnnouncement: (String) -> Unit = {},
     onTogglePlatformLock: (isLocked: Boolean, notice: String) -> Unit = { _, _ -> },
     onUpdateAdminReserveFund: (Double) -> Unit = {}
@@ -65,6 +65,7 @@ fun AdminPanelScreen(
     var announcementTitle by remember { mutableStateOf("") }
     var announcementContent by remember { mutableStateOf("") }
     var announcementCategory by remember { mutableStateOf("NEWS") }
+    var announcementImageUrl by remember { mutableStateOf("") }
     var isAnnouncementUrgent by remember { mutableStateOf(false) }
 
     var lockNoticeText by remember { mutableStateOf(adminConfig?.lockNotice ?: "SFC Platform deposits are temporarily scheduled for maintenance. Active savings cycles continue earning yields as normal!") }
@@ -671,6 +672,94 @@ fun AdminPanelScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
 
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = announcementImageUrl,
+                        onValueChange = { announcementImageUrl = it },
+                        label = { Text("Announcement Image URL (Optional)") },
+                        placeholder = { Text("https://... or choose a preset below") },
+                        leadingIcon = { Icon(Icons.Default.Image, contentDescription = null, tint = BentoPrimaryBlue) },
+                        trailingIcon = {
+                            if (announcementImageUrl.isNotBlank()) {
+                                IconButton(onClick = { announcementImageUrl = "" }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear Image", modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    // Preset Quick Image Chips
+                    Text("Preset Banners:", fontSize = 10.sp, fontWeight = FontWeight.SemiBold, color = TextSecondary)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        SuggestionChip(
+                            onClick = {
+                                announcementImageUrl = "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=800&q=80"
+                            },
+                            label = { Text("📈 Profit", fontSize = 10.sp) }
+                        )
+                        SuggestionChip(
+                            onClick = {
+                                announcementImageUrl = "https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&w=800&q=80"
+                            },
+                            label = { Text("🛡️ 20M Reserve", fontSize = 10.sp) }
+                        )
+                        SuggestionChip(
+                            onClick = {
+                                announcementImageUrl = "https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=800&q=80"
+                            },
+                            label = { Text("📱 MoMo Pay", fontSize = 10.sp) }
+                        )
+                        SuggestionChip(
+                            onClick = {
+                                announcementImageUrl = "https://images.unsplash.com/photo-1553729459-efe14ef6055d?auto=format&fit=crop&w=800&q=80"
+                            },
+                            label = { Text("🎉 Bonus", fontSize = 10.sp) }
+                        )
+                    }
+
+                    // Live Image Preview if provided
+                    if (announcementImageUrl.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(130.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color(0xFFF1F5F9))
+                        ) {
+                            AsyncImage(
+                                model = announcementImageUrl,
+                                contentDescription = "Announcement Preview",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                            )
+                            Surface(
+                                color = Color.Black.copy(alpha = 0.6f),
+                                shape = RoundedCornerShape(bottomEnd = 8.dp),
+                                modifier = Modifier.align(Alignment.TopStart)
+                            ) {
+                                Text(
+                                    text = "Image Preview",
+                                    color = Color.White,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(10.dp))
 
                     Row(
@@ -716,10 +805,12 @@ fun AdminPanelScreen(
                                     announcementTitle,
                                     announcementContent,
                                     announcementCategory,
-                                    isAnnouncementUrgent
+                                    isAnnouncementUrgent,
+                                    if (announcementImageUrl.isBlank()) null else announcementImageUrl.trim()
                                 )
                                 announcementTitle = ""
                                 announcementContent = ""
+                                announcementImageUrl = ""
                             }
                         },
                         enabled = announcementTitle.isNotBlank() && announcementContent.isNotBlank(),
@@ -754,6 +845,17 @@ fun AdminPanelScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
+                                if (!item.imageUrl.isNullOrBlank()) {
+                                    AsyncImage(
+                                        model = item.imageUrl,
+                                        contentDescription = null,
+                                        modifier = Modifier
+                                            .size(40.dp)
+                                            .clip(RoundedCornerShape(8.dp)),
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                }
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(text = item.title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                                     Text(text = item.content, fontSize = 11.sp, color = TextSecondary, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)

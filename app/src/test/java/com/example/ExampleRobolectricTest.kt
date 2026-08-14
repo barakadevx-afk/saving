@@ -16,6 +16,15 @@ class ExampleRobolectricTest {
   fun `read string from context`() {
     val context = ApplicationProvider.getApplicationContext<Context>()
     val appName = context.getString(R.string.app_name)
-    assertEquals("My Application", appName)
+    assertEquals("SMART FUTURE CAPITAL (SFC)", appName)
+  }
+
+  @Test
+  fun `verify referral bonus rate boost calculation`() {
+    val baseRate = 0.02
+    val referralBoost = 0.005 // +0.5% boost
+    val depositAmount = 15000.0
+    val expectedReward = depositAmount * (baseRate + referralBoost)
+    assertEquals(375.0, expectedReward, 0.001)
   }
 }

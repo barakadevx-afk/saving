@@ -105,8 +105,8 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
         LoginRegisterScreen(
             strings = strings,
             onLogin = { phoneOrId, pass -> viewModel.login(phoneOrId, pass) },
-            onRegister = { phone, fullName, pass, role, refCode ->
-                viewModel.register(phone, fullName, pass, role, refCode)
+            onRegister = { phone, fullName, pass, refCode ->
+                viewModel.register(phone, fullName, pass, refCode)
             },
             onDemoLoginUser = { viewModel.login("0788123456", "user123") },
             onDemoLoginAdmin = { viewModel.login("0792828727", "BARAKA@123!") }
@@ -404,7 +404,9 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                                 onWithdrawClick = { viewModel.selectTab(NavigationTab.WITHDRAW) },
                                 onFaqClick = { viewModel.selectTab(NavigationTab.FAQ) },
                                 onWebDownloadClick = { viewModel.selectTab(NavigationTab.WEB_DOWNLOAD) },
-                                onOpenAnnouncements = { showAnnouncementsDialog = true }
+                                onOpenAnnouncements = { showAnnouncementsDialog = true },
+                                onSimulateReferral = { friendName -> viewModel.simulateFriendReferral(friendName) },
+                                onClaimWelcomeBonus = { viewModel.claimWelcomeBonus() }
                             )
                         }
 
@@ -502,8 +504,8 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                                 onUpdateUserRole = { userId, newRole ->
                                     viewModel.updateUserRole(userId, newRole)
                                 },
-                                onPostAnnouncement = { title, content, category, isUrgent ->
-                                    viewModel.postAnnouncement(title, content, category, isUrgent)
+                                onPostAnnouncement = { title, content, category, isUrgent, imageUrl ->
+                                    viewModel.postAnnouncement(title, content, category, isUrgent, imageUrl)
                                 },
                                 onDeleteAnnouncement = { id ->
                                     viewModel.deleteAnnouncement(id)
@@ -531,7 +533,8 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                                 onFastForward = { viewModel.triggerCycleWorkerFastForward() },
                                 onViewAllTransactions = { viewModel.selectTab(NavigationTab.TRANSACTIONS) },
                                 onWithdrawClick = { viewModel.selectTab(NavigationTab.WITHDRAW) },
-                                onFaqClick = { viewModel.selectTab(NavigationTab.FAQ) }
+                                onFaqClick = { viewModel.selectTab(NavigationTab.FAQ) },
+                                onSimulateReferral = { friendName -> viewModel.simulateFriendReferral(friendName) }
                             )
                         }
                     }
@@ -541,6 +544,7 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                             selectedTier = selectedDepositTier,
                             strings = strings,
                             availableBalance = currentWallet?.availableBalance ?: 0.0,
+                            pendingBonusPercent = currentWallet?.pendingBonusPercent ?: 0.0,
                             onDismiss = { viewModel.closeDepositModal() },
                             onConfirmDeposit = { payFromAvailable ->
                                 viewModel.makeDeposit(selectedDepositTier, payFromAvailable)

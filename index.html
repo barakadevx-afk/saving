@@ -1,460 +1,1666 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SMART FUTURE CAPITAL (SFC) | High-Yield 3-Day Micro-Savings Platform</title>
-  <meta name="description" content="SMART FUTURE CAPITAL (SFC) - Automated 3-day high-yield savings cycles backed by a 20,000,000 RWF capital reserve. Earn predictable 2.0% returns every 3 days.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SMART FUTURE CAPITAL (SFC) | React JSX & Cloud Web Platform</title>
+  <meta name="description" content="SMART FUTURE CAPITAL (SFC) - Automated 3-Day High-Yield Micro-Savings & Liquidity Growth Platform. React JSX Frontend with Serverless Cloud Backend." />
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              navy: '#001A40',
+              gold: '#E5A93B',
+              goldDark: '#B45309',
+              blue: '#005AC1',
+              green: '#10B981',
+              card: '#FFFFFF',
+              darkCard: '#0F172A',
+              bgLight: '#F8FAFC',
+              bgDark: '#020617'
+            }
+          },
+          fontFamily: {
+            sans: ['Plus Jakarta Sans', 'Inter', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- React 18 & ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  
+  <!-- Babel for standalone JSX compilation -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
   <style>
-    :root {
-      --navy-dark: #001A40;
-      --navy-sidebar: #1D1B20;
-      --gold-accent: #E5A93B;
-      --gold-dark: #B45309;
-      --blue-primary: #005AC1;
-      --green-success: #10B981;
-      --green-light: #E8F5E9;
-      --bento-bg: #F7F9FC;
-      --card-bg: #FFFFFF;
-      --border-color: #E0E2EC;
-      --text-primary: #1B1B1F;
-      --text-secondary: #74777F;
-    }
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
     body {
-      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background-color: var(--bento-bg);
-      color: var(--text-primary);
-      line-height: 1.6;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      -webkit-tap-highlight-color: transparent;
     }
-    header {
-      background-color: var(--navy-dark);
-      color: #fff;
-      padding: 1rem 1.5rem;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
     }
-    .nav-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 1.25rem;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      color: #fff;
-      text-decoration: none;
-    }
-    .logo-badge {
-      background: linear-gradient(135deg, var(--gold-accent), #FFD54F);
-      color: var(--navy-dark);
-      padding: 4px 10px;
-      border-radius: 8px;
-      font-weight: 900;
-      font-size: 0.9rem;
-    }
-    .nav-links {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-    }
-    .nav-links a {
-      color: rgba(255,255,255,0.85);
-      text-decoration: none;
-      font-size: 0.95rem;
-      font-weight: 600;
-      transition: color 0.2s;
-    }
-    .nav-links a:hover {
-      color: var(--gold-accent);
-    }
-    .btn-header {
-      background-color: var(--gold-accent);
-      color: var(--navy-dark);
-      padding: 8px 18px;
-      border-radius: 10px;
-      font-weight: 700;
-      text-decoration: none;
-      transition: transform 0.2s, background 0.2s;
-    }
-    .btn-header:hover {
-      background-color: #f3b749;
-      transform: translateY(-1px);
-    }
-    .hero {
-      background: linear-gradient(180deg, var(--navy-dark) 0%, #0c2b5c 100%);
-      color: #fff;
-      padding: 4rem 1.5rem 5rem;
-      text-align: center;
-    }
-    .hero-container {
-      max-width: 800px;
-      margin: 0 auto;
-    }
-    .reserve-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(229, 169, 59, 0.15);
-      border: 1px solid var(--gold-accent);
-      padding: 6px 14px;
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
       border-radius: 999px;
-      color: var(--gold-accent);
-      font-size: 0.85rem;
-      font-weight: 700;
-      margin-bottom: 1.5rem;
     }
-    .hero h1 {
-      font-size: 2.75rem;
-      font-weight: 800;
-      line-height: 1.2;
-      margin-bottom: 1rem;
-      letter-spacing: -1px;
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.8; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.02); }
     }
-    .hero p {
-      font-size: 1.15rem;
-      color: rgba(255,255,255,0.8);
-      margin-bottom: 2rem;
-    }
-    .hero-actions {
-      display: flex;
-      justify-content: center;
-      gap: 15px;
-      flex-wrap: wrap;
-    }
-    .btn-primary {
-      background: linear-gradient(135deg, var(--gold-accent), #FFD54F);
-      color: var(--navy-dark);
-      padding: 14px 28px;
-      border-radius: 12px;
-      font-weight: 800;
-      font-size: 1rem;
-      text-decoration: none;
-      box-shadow: 0 4px 14px rgba(229, 169, 59, 0.4);
-    }
-    .btn-secondary {
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.25);
-      color: #fff;
-      padding: 14px 28px;
-      border-radius: 12px;
-      font-weight: 700;
-      font-size: 1rem;
-      text-decoration: none;
-    }
-    .main-content {
-      max-width: 1100px;
-      margin: -3rem auto 4rem;
-      padding: 0 1.5rem;
-    }
-    .bento-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 1.5rem;
-    }
-    .bento-card {
-      background-color: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 20px;
-      padding: 1.75rem;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.03);
-    }
-    .card-title {
-      font-size: 1.25rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .tier-list {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      margin-top: 1rem;
-    }
-    .tier-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px 14px;
-      background: #F8FAFC;
-      border-radius: 12px;
-      border: 1px solid #E2E8F0;
-    }
-    .tier-item.highlight {
-      border-color: var(--gold-accent);
-      background: #FFFDF7;
-    }
-    .tier-name {
-      font-weight: 700;
-      font-size: 0.95rem;
-    }
-    .tier-detail {
-      font-size: 0.8rem;
-      color: var(--text-secondary);
-    }
-    .tier-return {
-      font-weight: 800;
-      color: var(--green-success);
-      font-size: 1rem;
-      text-align: right;
-    }
-    .calc-input {
-      width: 100%;
-      padding: 12px;
-      border-radius: 10px;
-      border: 1px solid var(--border-color);
-      font-size: 1rem;
-      margin-top: 8px;
-    }
-    .calc-result {
-      margin-top: 1rem;
-      background: var(--navy-dark);
-      color: #fff;
-      padding: 1rem;
-      border-radius: 14px;
-      text-align: center;
-    }
-    .calc-profit {
-      font-size: 1.5rem;
-      font-weight: 800;
-      color: var(--gold-accent);
-    }
-    .payment-instructions {
-      background: #EFF6FF;
-      border: 1px solid #BFDBFE;
-      border-radius: 14px;
-      padding: 1rem;
-      margin-top: 1rem;
-    }
-    .momo-code {
-      font-family: monospace;
-      font-weight: 800;
-      font-size: 1.2rem;
-      color: var(--blue-primary);
-      background: #DBEAFE;
-      padding: 4px 8px;
-      border-radius: 6px;
-      display: inline-block;
-      margin-top: 4px;
-    }
-    footer {
-      background-color: var(--navy-dark);
-      color: rgba(255,255,255,0.7);
-      text-align: center;
-      padding: 2.5rem 1.5rem;
-      font-size: 0.9rem;
-    }
-    footer a {
-      color: var(--gold-accent);
-      text-decoration: none;
+    .gold-glow {
+      box-shadow: 0 4px 20px rgba(229, 169, 59, 0.25);
     }
   </style>
 </head>
-<body>
+<body class="bg-slate-50 text-slate-900 antialiased min-h-screen">
+  <div id="root"></div>
 
-  <header>
-    <div class="nav-container">
-      <a href="#" class="logo">
-        <span class="logo-badge">SFC</span>
-        <span>SMART FUTURE CAPITAL</span>
-      </a>
-      <div class="nav-links">
-        <a href="#calculator">Calculator</a>
-        <a href="#tiers">Tiers</a>
-        <a href="#deposit">Deposit Info</a>
-        <a href="#download" class="btn-header">Get App</a>
-      </div>
-    </div>
-  </header>
+  <!-- React JSX Application -->
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
 
-  <section class="hero">
-    <div class="hero-container">
-      <div class="reserve-badge">
-        <span>🛡️</span> 20,000,000 RWF Capital Reserve Guaranteed
-      </div>
-      <h1>Accelerate Your Growth with 3-Day Micro-Savings Cycles</h1>
-      <p>Automated fixed-yield returns with guaranteed payouts. Earn 2.0% on every cycle with SMART FUTURE CAPITAL (SFC).</p>
-      <div class="hero-actions">
-        <a href="#calculator" class="btn-primary">Calculate Your Yield 🚀</a>
-        <a href="#deposit" class="btn-secondary">Deposit via MoMo Code 💳</a>
-      </div>
-    </div>
-  </section>
+    const TIERS_DATA = [
+      { id: 'tier_a', name: 'Tier A - Starter', minAmount: 6000, durationDays: 3, rate: 0.02, desc: 'Quick 3-day liquidity test', badge: 'Starter' },
+      { id: 'tier_b', name: 'Tier B - Silver Growth', minAmount: 10000, durationDays: 3, rate: 0.02, desc: 'Standard 3-day capital accelerator', badge: 'Popular' },
+      { id: 'tier_c', name: 'Tier C - Gold Master', minAmount: 15000, durationDays: 3, rate: 0.02, desc: 'Most popular community choice', badge: 'Featured' },
+      { id: 'tier_d', name: 'Tier D - Platinum VIP', minAmount: 45000, durationDays: 3, rate: 0.02, desc: 'Maximum yield for high-volume savings', badge: 'High Yield' }
+    ];
 
-  <main class="main-content">
-    <div class="bento-grid">
-      <!-- Tiers Bento Card -->
-      <div class="bento-card" id="tiers">
-        <div class="card-title">
-          <span>⚡</span> Available Savings Tiers
-        </div>
-        <p style="font-size: 0.85rem; color: var(--text-secondary);">Fixed 3-day lock periods with automated yield payouts.</p>
-        
-        <div class="tier-list">
-          <div class="tier-item">
-            <div>
-              <div class="tier-name">Tier A: 6,000 RWF</div>
-              <div class="tier-detail">3 Days • 2.0% Yield</div>
-            </div>
-            <div>
-              <div class="tier-return">+120 RWF</div>
-              <div class="tier-detail">Total: 6,120 RWF</div>
-            </div>
-          </div>
+    const CURRENCIES = {
+      RWF: { symbol: 'RWF', rate: 1 },
+      USD: { symbol: '$', rate: 0.00073 },
+      KES: { symbol: 'KSh', rate: 0.095 },
+      UGX: { symbol: 'USh', rate: 2.72 },
+      EUR: { symbol: '€', rate: 0.00067 }
+    };
 
-          <div class="tier-item">
-            <div>
-              <div class="tier-name">Tier B: 10,000 RWF</div>
-              <div class="tier-detail">3 Days • 2.0% Yield</div>
-            </div>
-            <div>
-              <div class="tier-return">+200 RWF</div>
-              <div class="tier-detail">Total: 10,200 RWF</div>
-            </div>
-          </div>
+    function App() {
+      const [currency, setCurrency] = useState('RWF');
+      const [theme, setTheme] = useState(() => {
+        return localStorage.getItem('sfc_theme') || 'dark';
+      });
+      const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, cycles, deposit, withdraw, admin
+      const [reserveFund, setReserveFund] = useState(20000000);
 
-          <div class="tier-item highlight">
-            <div>
-              <div class="tier-name">Tier C (Popular): 15,000 RWF ⭐</div>
-              <div class="tier-detail">3 Days • 2.0% Yield</div>
-            </div>
-            <div>
-              <div class="tier-return">+300 RWF</div>
-              <div class="tier-detail">Total: 15,300 RWF</div>
-            </div>
-          </div>
+      useEffect(() => {
+        localStorage.setItem('sfc_theme', theme);
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }, [theme]);
 
-          <div class="tier-item">
-            <div>
-              <div class="tier-name">Tier D (High Yield): 45,000 RWF 💎</div>
-              <div class="tier-detail">3 Days • 2.0% Yield</div>
-            </div>
-            <div>
-              <div class="tier-return">+900 RWF</div>
-              <div class="tier-detail">Total: 45,900 RWF</div>
-            </div>
-          </div>
-        </div>
-      </div>
+      const toggleTheme = () => {
+        setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+      };
+      const [userCycles, setUserCycles] = useState(() => {
+        const saved = localStorage.getItem('sfc_cycles');
+        return saved ? JSON.parse(saved) : [
+          {
+            id: 'CYC-1001',
+            tierName: 'Tier C - Gold Master',
+            depositAmount: 15000,
+            interestRate: 0.02,
+            profit: 300,
+            totalPayout: 15300,
+            startedAt: Date.now() - (1.5 * 86400000),
+            maturityDate: Date.now() + (1.5 * 86400000),
+            status: 'ACTIVE'
+          }
+        ];
+      });
 
-      <!-- Interactive Calculator Bento Card -->
-      <div class="bento-card" id="calculator">
-        <div class="card-title">
-          <span>📈</span> Yield Calculator
-        </div>
-        <p style="font-size: 0.85rem; color: var(--text-secondary);">Estimate your growth over multiple consecutive 3-day cycles.</p>
+      const [deposits, setDeposits] = useState(() => {
+        const saved = localStorage.getItem('sfc_deposits');
+        return saved ? JSON.parse(saved) : [
+          { id: 'DEP-8841', phone: '+250788123456', amount: 15000, momoTxId: 'TXN89327110', status: 'APPROVED', time: '1 day ago' }
+        ];
+      });
 
-        <div style="margin-top: 1rem;">
-          <label style="font-size: 0.85rem; font-weight: 600;">Deposit Principal (RWF):</label>
-          <input type="number" id="calcPrincipal" class="calc-input" value="15000" step="1000" min="1000" oninput="calculateReturns()">
-        </div>
+      const [withdrawals, setWithdrawals] = useState(() => {
+        const saved = localStorage.getItem('sfc_withdrawals');
+        return saved ? JSON.parse(saved) : [
+          { id: 'WTH-3021', phone: '+250788123456', amount: 15300, status: 'PENDING', time: '4 hours ago' }
+        ];
+      });
 
-        <div style="margin-top: 0.75rem;">
-          <label style="font-size: 0.85rem; font-weight: 600;">Number of Consecutive 3-Day Cycles:</label>
-          <select id="calcCycles" class="calc-input" onchange="calculateReturns()">
-            <option value="1">1 Cycle (3 Days)</option>
-            <option value="2">2 Cycles (6 Days)</option>
-            <option value="5" selected>5 Cycles (15 Days)</option>
-            <option value="10">10 Cycles (30 Days / 1 Month)</option>
-          </select>
-        </div>
+      const [announcements, setAnnouncements] = useState([
+        {
+          id: '1',
+          title: '🛡️ 20,000,000 RWF Capital Reserve Backing',
+          content: 'All user 3-day savings cycles are 100% insured against loss with guaranteed payouts.',
+          category: 'IMPORTANT',
+          imageUrl: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&w=800&q=80',
+          time: 'Just now',
+          urgent: true
+        },
+        {
+          id: '2',
+          title: '⚡ MoMo Merchant Deposit Activated',
+          content: 'Direct merchant code *182*8*1*1799283# deposits are credited automatically to your account.',
+          category: 'NEWS',
+          imageUrl: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=800&q=80',
+          time: '2 hours ago',
+          urgent: false
+        },
+        {
+          id: '3',
+          title: '🚀 High-Yield 3-Day Cycles Open',
+          content: 'Tier A, B, C, and D plans are active! Start saving and receive your principal + yields.',
+          category: 'PROMO',
+          imageUrl: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=800&q=80',
+          time: '1 day ago',
+          urgent: false
+        }
+      ]);
 
-        <div class="calc-result">
-          <div style="font-size: 0.8rem; color: rgba(255,255,255,0.7);">Estimated Total Profit:</div>
-          <div class="calc-profit" id="calcProfitResult">+1,500 RWF</div>
-          <div style="font-size: 0.85rem; margin-top: 4px;" id="calcTotalResult">Total Payout: 16,500 RWF</div>
-        </div>
-      </div>
+      const [depositModalOpen, setDepositModalOpen] = useState(false);
+      const [notificationsModalOpen, setNotificationsModalOpen] = useState(false);
+      const [selectedTierForDeposit, setSelectedTierForDeposit] = useState(TIERS_DATA[2]);
+      const [notification, setNotification] = useState(null);
+      const [welcomeBonusClaimed, setWelcomeBonusClaimed] = useState(() => {
+        return localStorage.getItem('sfc_welcome_bonus') === 'true';
+      });
 
-      <!-- MoMo Deposit Guide Bento Card -->
-      <div class="bento-card" id="deposit">
-        <div class="card-title">
-          <span>💳</span> MTN / Airtel Deposit Guide
-        </div>
-        <p style="font-size: 0.85rem; color: var(--text-secondary);">Direct mobile money payments with instant automated crediting.</p>
+      // Refer-a-Friend state
+      const [referralCode] = useState('BARAKA50');
+      const [pendingBonusPercent, setPendingBonusPercent] = useState(() => {
+        const saved = localStorage.getItem('sfc_pending_bonus_percent');
+        return saved ? parseFloat(saved) : 0.005; // default initial +0.5% pending boost
+      });
+      const [referralBonusCash, setReferralBonusCash] = useState(() => {
+        const saved = localStorage.getItem('sfc_referral_bonus_cash');
+        return saved ? parseFloat(saved) : 1000;
+      });
+      const [referredFriends, setReferredFriends] = useState(() => {
+        const saved = localStorage.getItem('sfc_referred_friends');
+        if (saved) {
+          try { return JSON.parse(saved); } catch(e) {}
+        }
+        return [
+          { id: 'ref_1', name: 'Eric Mugisha', phone: '+250 788 412 884', joinedAt: 'Yesterday', bonusGranted: '+0.5% Next Cycle Yield' }
+        ];
+      });
 
-        <div class="payment-instructions">
-          <div style="font-size: 0.85rem; font-weight: 700; color: #1E40AF;">Official MTN MoMo Merchant Code:</div>
-          <div class="momo-code">*182*8*1*1799283#</div>
-          <div style="font-size: 0.8rem; color: #3B82F6; margin-top: 4px;">Account Name: SMART FUTURE CAPITAL</div>
-        </div>
+      useEffect(() => {
+        localStorage.setItem('sfc_pending_bonus_percent', pendingBonusPercent.toString());
+      }, [pendingBonusPercent]);
 
-        <div style="margin-top: 1rem; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
-          <p>1. Dial the MTN Mobile Money merchant code or send to Airtel.</p>
-          <p>2. Enter your chosen tier amount (e.g. 15,000 RWF).</p>
-          <p>3. Copy the SMS Transaction ID and submit it in the SFC App.</p>
-        </div>
-      </div>
+      useEffect(() => {
+        localStorage.setItem('sfc_referral_bonus_cash', referralBonusCash.toString());
+      }, [referralBonusCash]);
 
-      <!-- App Download & Vercel Edge Bento Card -->
-      <div class="bento-card" id="download">
-        <div class="card-title">
-          <span>🌐</span> Cross-Platform & Downloads
-        </div>
-        <p style="font-size: 0.85rem; color: var(--text-secondary);">Hosted on Vercel Global Edge Network with zero downtime.</p>
+      useEffect(() => {
+        localStorage.setItem('sfc_referred_friends', JSON.stringify(referredFriends));
+      }, [referredFriends]);
 
-        <div style="margin-top: 1.25rem; display: flex; flex-direction: column; gap: 10px;">
-          <a href="#" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: 12px; background: var(--navy-dark); color: #fff; text-decoration: none;">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span>📱</span>
-              <div>
-                <div style="font-weight: 700; font-size: 0.9rem;">Android APK (v3.0)</div>
-                <div style="font-size: 0.75rem; color: var(--gold-accent);">Direct Mobile Download • 24.5 MB</div>
+      const handleClaimWelcomeBonus = () => {
+        if (welcomeBonusClaimed) return;
+        setWelcomeBonusClaimed(true);
+        localStorage.setItem('sfc_welcome_bonus', 'true');
+        const bonusDep = {
+          id: 'DEP-BONUS-' + Math.floor(1000 + Math.random() * 9000),
+          phone: '+250788123456',
+          amount: 1000,
+          momoTxId: 'BONUS-WELCOME-1000',
+          status: 'APPROVED',
+          time: 'Just now'
+        };
+        setDeposits(prev => [bonusDep, ...prev]);
+        showToast('🎉 1,000 RWF Welcome Bonus claimed! Added to your funds.');
+      };
+
+      const handleSimulateReferral = (friendName = 'Aline Uwase') => {
+        const phone = '+250 788 ' + Math.floor(100000 + Math.random() * 900000);
+        const newFriend = {
+          id: 'ref_' + Date.now(),
+          name: friendName,
+          phone: phone,
+          joinedAt: 'Just now',
+          bonusGranted: '+0.5% Next Cycle Yield & 1,000 RWF'
+        };
+        setReferredFriends(prev => [newFriend, ...prev]);
+        setPendingBonusPercent(prev => prev + 0.005);
+        setReferralBonusCash(prev => prev + 1000);
+        const bonusDep = {
+          id: 'DEP-REF-' + Math.floor(1000 + Math.random() * 9000),
+          phone: '+250788123456',
+          amount: 1000,
+          momoTxId: 'BONUS-REF-' + Math.floor(1000 + Math.random() * 9000),
+          status: 'APPROVED',
+          time: 'Just now'
+        };
+        setDeposits(prev => [bonusDep, ...prev]);
+        showToast(`🎉 ${friendName} registered with your referral link! +0.5% next cycle bonus & 1,000 RWF granted!`);
+      };
+
+      useEffect(() => {
+        localStorage.setItem('sfc_cycles', JSON.stringify(userCycles));
+      }, [userCycles]);
+
+      useEffect(() => {
+        localStorage.setItem('sfc_deposits', JSON.stringify(deposits));
+      }, [deposits]);
+
+      useEffect(() => {
+        localStorage.setItem('sfc_withdrawals', JSON.stringify(withdrawals));
+      }, [withdrawals]);
+
+      const showToast = (msg, type = 'success') => {
+        setNotification({ msg, type });
+        setTimeout(() => setNotification(null), 4000);
+      };
+
+      const formatMoney = (rwfAmount) => {
+        const cur = CURRENCIES[currency];
+        const val = rwfAmount * cur.rate;
+        if (currency === 'RWF') return Math.round(val).toLocaleString() + ' RWF';
+        return cur.symbol + val.toFixed(2);
+      };
+
+      const totalDeposited = useMemo(() => {
+        return userCycles.reduce((acc, c) => acc + c.depositAmount, 0);
+      }, [userCycles]);
+
+      const totalEarned = useMemo(() => {
+        return userCycles.reduce((acc, c) => acc + c.profit, 0);
+      }, [userCycles]);
+
+      const handleStartCycle = (tier, customAmount = null) => {
+        const amount = customAmount || tier.minAmount;
+        const appliedBonus = pendingBonusPercent;
+        const effectiveRate = tier.rate + appliedBonus;
+        const profit = Math.round(amount * effectiveRate);
+        const newCycle = {
+          id: 'CYC-' + Math.floor(1000 + Math.random() * 9000),
+          tierName: tier.name,
+          depositAmount: amount,
+          interestRate: effectiveRate,
+          bonusApplied: appliedBonus,
+          profit: profit,
+          totalPayout: amount + profit,
+          startedAt: Date.now(),
+          maturityDate: Date.now() + (tier.durationDays * 86400000),
+          status: 'ACTIVE'
+        };
+        setUserCycles([newCycle, ...userCycles]);
+        if (appliedBonus > 0) {
+          setPendingBonusPercent(0);
+          showToast(`🎉 Cycle Activated with +${(appliedBonus * 100).toFixed(1)}% Referral Yield Boost applied! Total yield: +${(effectiveRate * 100).toFixed(1)}%`);
+        } else {
+          showToast(`🎉 3-Day Savings Cycle Activated for ${formatMoney(amount)}!`);
+        }
+      };
+
+      const handleDepositSubmit = (formData) => {
+        const newDep = {
+          id: 'DEP-' + Math.floor(1000 + Math.random() * 9000),
+          phone: formData.phone,
+          amount: Number(formData.amount),
+          momoTxId: formData.txId,
+          status: 'APPROVED',
+          time: 'Just now'
+        };
+        setDeposits([newDep, ...deposits]);
+        handleStartCycle(formData.tier, Number(formData.amount));
+        setDepositModalOpen(false);
+      };
+
+      const handleWithdrawSubmit = (phone, amount) => {
+        const numAmount = Number(amount);
+        if (!phone || numAmount <= 0) {
+          showToast('Please enter a valid phone and amount', 'error');
+          return;
+        }
+        const newWth = {
+          id: 'WTH-' + Math.floor(1000 + Math.random() * 9000),
+          phone,
+          amount: numAmount,
+          status: 'PENDING',
+          time: 'Just now'
+        };
+        setWithdrawals([newWth, ...withdrawals]);
+        showToast(`🚀 Withdrawal request of ${formatMoney(numAmount)} submitted to ${phone}!`);
+      };
+
+      return (
+        <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-slate-100 transition-colors duration-200">
+          {/* Header */}
+          <header className="sticky top-0 z-40 bg-[#001A40] text-white shadow-lg border-b border-slate-800">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+              <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveTab('dashboard')}>
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#E5A93B] to-amber-300 text-[#001A40] flex items-center justify-center font-extrabold text-xl shadow-md">
+                  SFC
+                </div>
+                <div>
+                  <div className="font-extrabold text-lg tracking-tight leading-none text-white">SMART FUTURE CAPITAL</div>
+                  <div className="text-xs text-amber-400 font-semibold tracking-wider">3-DAY HIGH YIELD VAULT</div>
+                </div>
+              </div>
+
+              {/* Navigation Links */}
+              <nav className="hidden md:flex items-center gap-1 bg-slate-900/60 p-1 rounded-xl border border-slate-700/50">
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'dashboard' ? 'bg-[#E5A93B] text-[#001A40] shadow' : 'text-slate-300 hover:text-white'}`}
+                >
+                  Dashboard
+                </button>
+                <button
+                  onClick={() => setActiveTab('cycles')}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'cycles' ? 'bg-[#E5A93B] text-[#001A40] shadow' : 'text-slate-300 hover:text-white'}`}
+                >
+                  Active Cycles ({userCycles.length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('withdraw')}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'withdraw' ? 'bg-[#E5A93B] text-[#001A40] shadow' : 'text-slate-300 hover:text-white'}`}
+                >
+                  Withdrawals
+                </button>
+                <button
+                  onClick={() => setActiveTab('admin')}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'admin' ? 'bg-[#E5A93B] text-[#001A40] shadow' : 'text-slate-300 hover:text-white'}`}
+                >
+                  Admin Hub
+                </button>
+              </nav>
+
+              {/* Action, Notifications, Theme Toggle and Currency */}
+              <div className="flex items-center gap-2 sm:gap-3">
+                {/* Theme Switcher Button (Dark / Light) */}
+                <button
+                  onClick={toggleTheme}
+                  title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-amber-300 border border-slate-700 transition-all flex items-center gap-1.5 text-xs font-bold shadow-sm"
+                >
+                  <span>{theme === 'dark' ? '🌙 Dark' : '☀️ Light'}</span>
+                </button>
+
+                {/* Header Notification Bell */}
+                <button
+                  onClick={() => setNotificationsModalOpen(true)}
+                  title="View Announcements & Notifications"
+                  className="relative p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-amber-400 border border-slate-700 transition-all flex items-center justify-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {announcements.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black rounded-full h-4 min-w-[16px] px-1 flex items-center justify-center animate-pulse border border-[#001A40]">
+                      {announcements.length}
+                    </span>
+                  )}
+                </button>
+
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  className="bg-slate-800 text-amber-400 text-xs font-bold px-2.5 py-2 rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                >
+                  <option value="RWF">🇷🇼 RWF</option>
+                  <option value="USD">🇺🇸 USD ($)</option>
+                  <option value="KES">🇰🇪 KES (KSh)</option>
+                  <option value="UGX">🇺🇬 UGX (USh)</option>
+                  <option value="EUR">🇪🇺 EUR (€)</option>
+                </select>
+
+                <button
+                  onClick={() => { setSelectedTierForDeposit(TIERS_DATA[2]); setDepositModalOpen(true); }}
+                  className="bg-gradient-to-r from-[#E5A93B] to-amber-400 text-[#001A40] px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold shadow-md hover:brightness-110 active:scale-95 transition-all"
+                >
+                  + Deposit
+                </button>
               </div>
             </div>
-            <span style="font-size: 0.8rem; font-weight: 700; color: var(--gold-accent);">Download ➔</span>
-          </a>
 
-          <a href="#" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; border-radius: 12px; background: #F1F5F9; color: var(--text-primary); text-decoration: none; border: 1px solid var(--border-color);">
-            <div style="display: flex; align-items: center; gap: 8px;">
-              <span>💻</span>
+            {/* Mobile Tab Bar */}
+            <div className="md:hidden flex border-t border-slate-800 bg-slate-900/90 px-2 py-1 justify-around text-xs font-bold text-slate-400">
+              <button onClick={() => setActiveTab('dashboard')} className={`py-1.5 px-2 ${activeTab === 'dashboard' ? 'text-amber-400 border-b-2 border-amber-400' : ''}`}>Dashboard</button>
+              <button onClick={() => setActiveTab('cycles')} className={`py-1.5 px-2 ${activeTab === 'cycles' ? 'text-amber-400 border-b-2 border-amber-400' : ''}`}>Cycles</button>
+              <button onClick={() => setActiveTab('withdraw')} className={`py-1.5 px-2 ${activeTab === 'withdraw' ? 'text-amber-400 border-b-2 border-amber-400' : ''}`}>Withdraw</button>
+              <button onClick={() => setActiveTab('admin')} className={`py-1.5 px-2 ${activeTab === 'admin' ? 'text-amber-400 border-b-2 border-amber-400' : ''}`}>Admin</button>
+            </div>
+          </header>
+
+          {/* Toast Notification */}
+          {notification && (
+            <div className={`fixed top-20 right-4 z-50 px-5 py-3 rounded-xl shadow-2xl text-white font-bold text-sm flex items-center gap-2 transition-all transform animate-bounce ${notification.type === 'error' ? 'bg-red-600' : 'bg-emerald-600'}`}>
+              <span>{notification.type === 'error' ? '⚠️' : '✅'}</span>
+              <span>{notification.msg}</span>
+            </div>
+          )}
+
+          {/* Announcements Banner */}
+          <div
+            onClick={() => setNotificationsModalOpen(true)}
+            className="cursor-pointer bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-amber-500/15 border-b border-amber-500/30 px-4 py-2.5 hover:bg-amber-400/20 transition-all text-slate-800 dark:text-amber-200"
+          >
+            <div className="max-w-7xl mx-auto flex items-center justify-between text-xs sm:text-sm font-semibold">
+              <div className="flex items-center gap-2 overflow-hidden">
+                <span className="bg-amber-500 text-slate-950 text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span>📢</span>
+                  <span>Notice</span>
+                </span>
+                <span className="truncate">{announcements[0]?.title} — {announcements[0]?.content}</span>
+                <span className="text-[11px] text-blue-600 dark:text-amber-300 font-bold underline whitespace-nowrap ml-1">View Details ↗</span>
+              </div>
+              <span className="hidden sm:inline-block text-xs font-bold text-amber-700 dark:text-amber-300 ml-4 whitespace-nowrap">
+                Reserve: {formatMoney(reserveFund)}
+              </span>
+            </div>
+          </div>
+
+          {/* Main Content Area */}
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            {activeTab === 'dashboard' && (
+              <DashboardView
+                formatMoney={formatMoney}
+                reserveFund={reserveFund}
+                totalDeposited={totalDeposited}
+                totalEarned={totalEarned}
+                activeCyclesCount={userCycles.length}
+                tiers={TIERS_DATA}
+                onSelectTier={(tier) => { setSelectedTierForDeposit(tier); setDepositModalOpen(true); }}
+                onOpenCalculator={() => {}}
+                userCycles={userCycles}
+                welcomeBonusClaimed={welcomeBonusClaimed}
+                onClaimWelcomeBonus={handleClaimWelcomeBonus}
+                referralCode={referralCode}
+                pendingBonusPercent={pendingBonusPercent}
+                referralBonusCash={referralBonusCash}
+                referredFriends={referredFriends}
+                onSimulateReferral={handleSimulateReferral}
+                showToast={showToast}
+              />
+            )}
+
+            {activeTab === 'cycles' && (
+              <CyclesView
+                cycles={userCycles}
+                formatMoney={formatMoney}
+                onOpenDeposit={() => { setSelectedTierForDeposit(TIERS_DATA[2]); setDepositModalOpen(true); }}
+              />
+            )}
+
+            {activeTab === 'withdraw' && (
+              <WithdrawView
+                withdrawals={withdrawals}
+                formatMoney={formatMoney}
+                availableBalance={totalDeposited + totalEarned}
+                onSubmitWithdraw={handleWithdrawSubmit}
+              />
+            )}
+
+            {activeTab === 'admin' && (
+              <AdminHubView
+                reserveFund={reserveFund}
+                onUpdateReserve={setReserveFund}
+                deposits={deposits}
+                withdrawals={withdrawals}
+                cycles={userCycles}
+                formatMoney={formatMoney}
+                announcements={announcements}
+                onAddAnnouncement={(ann) => setAnnouncements([ann, ...announcements])}
+              />
+            )}
+          </main>
+
+          {/* Deposit Modal */}
+          {depositModalOpen && (
+            <DepositModal
+              tier={selectedTierForDeposit}
+              formatMoney={formatMoney}
+              onClose={() => setDepositModalOpen(false)}
+              onSubmit={handleDepositSubmit}
+            />
+          )}
+
+          {/* Announcements & Notifications Modal */}
+          {notificationsModalOpen && (
+            <AnnouncementsModal
+              announcements={announcements}
+              onClose={() => setNotificationsModalOpen(false)}
+              onDeleteAnnouncement={(id) => setAnnouncements(announcements.filter(a => a.id !== id))}
+            />
+          )}
+
+          {/* Footer */}
+          <footer className="bg-[#001A40] text-slate-400 border-t border-slate-800 py-8 px-4 text-center text-xs">
+            <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full bg-emerald-400 inline-block animate-pulse"></span>
+                <span className="font-bold text-slate-200">SMART FUTURE CAPITAL (SFC) React JSX Cloud Engine</span>
+              </div>
+              <div className="text-slate-400">
+                Deployed on Vercel Global Edge Network • Backed by 20M RWF Reserve
+              </div>
               <div>
-                <div style="font-weight: 700; font-size: 0.9rem;">Windows Desktop (v3.0)</div>
-                <div style="font-size: 0.75rem; color: var(--text-secondary);">Installer & Portable Edition • 64.2 MB</div>
+                © 2026 SFC Ltd. All rights reserved.
               </div>
             </div>
-            <span style="font-size: 0.8rem; font-weight: 700; color: var(--blue-primary);">Get .exe ➔</span>
-          </a>
+          </footer>
         </div>
-      </div>
-    </div>
-  </main>
-
-  <footer>
-    <p>© 2026 SMART FUTURE CAPITAL (SFC). All rights reserved.</p>
-    <p style="margin-top: 6px; font-size: 0.8rem;">Deployed and optimized for <a href="https://vercel.com" target="_blank">Vercel</a> • Backed by 20M RWF Liquidity Reserve</p>
-  </footer>
-
-  <script>
-    function calculateReturns() {
-      const principal = parseFloat(document.getElementById('calcPrincipal').value) || 0;
-      const cycles = parseInt(document.getElementById('calcCycles').value) || 1;
-      const rate = 0.02; // 2% per 3-day cycle
-      
-      const singleCycleProfit = principal * rate;
-      const totalProfit = singleCycleProfit * cycles;
-      const totalPayout = principal + totalProfit;
-
-      document.getElementById('calcProfitResult').innerText = '+' + Math.round(totalProfit).toLocaleString() + ' RWF';
-      document.getElementById('calcTotalResult').innerText = 'Total Payout: ' + Math.round(totalPayout).toLocaleString() + ' RWF (' + (cycles * 3) + ' Days)';
+      );
     }
+
+    // DASHBOARD VIEW
+    function DashboardView({ formatMoney, reserveFund, totalDeposited, totalEarned, activeCyclesCount, tiers, onSelectTier, userCycles, welcomeBonusClaimed, onClaimWelcomeBonus, referralCode, pendingBonusPercent, referralBonusCash, referredFriends, onSimulateReferral, showToast }) {
+      const [calcPrincipal, setCalcPrincipal] = useState(15000);
+      const [calcCycles, setCalcCycles] = useState(5);
+      const [copied, setCopied] = useState(false);
+
+      const referralLink = window.location.origin + window.location.pathname + '?ref=' + (referralCode || 'BARAKA50');
+
+      const handleCopyLink = () => {
+        navigator.clipboard.writeText(referralLink);
+        setCopied(true);
+        showToast('📋 Unique Referral Link copied to clipboard!');
+        setTimeout(() => setCopied(false), 3000);
+      };
+
+      const handleShareWhatsApp = () => {
+        const text = encodeURIComponent(`Join Future Smart Capital and earn guaranteed profit yields in 3 days! Register with my referral link: ${referralLink}`);
+        window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+      };
+
+      const calcYield = useMemo(() => {
+        const singleCycle = calcPrincipal * 0.02;
+        const totalProfit = singleCycle * calcCycles;
+        return {
+          single: singleCycle,
+          totalProfit: totalProfit,
+          totalPayout: calcPrincipal + totalProfit,
+          days: calcCycles * 3
+        };
+      }, [calcPrincipal, calcCycles]);
+
+      return (
+        <div className="space-y-8">
+          {/* Welcome Starter Bonus (1,000 RWF Free Starter Funds) */}
+          {!welcomeBonusClaimed ? (
+            <div className="bg-gradient-to-r from-[#001A40] via-[#002660] to-[#001433] rounded-2xl p-5 sm:p-6 text-white shadow-xl border-2 border-amber-400/80 flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden">
+              <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-amber-400/15 rounded-full blur-2xl pointer-events-none"></div>
+              <div className="flex items-center gap-4 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 flex items-center justify-center text-3xl shadow-lg shrink-0">
+                  🎁
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-amber-400 text-slate-950 text-[10px] font-black uppercase px-2 py-0.5 rounded-md">FREE WELCOME GIFT</span>
+                    <span className="text-xs text-amber-300 font-bold">Instant 1,000 RWF ⚡</span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-white mt-1">1,000 RWF Welcome Bonus Available</h3>
+                  <p className="text-xs sm:text-sm text-slate-300 mt-0.5">Claim your free starter bonus now and add it directly to your funds to start your 3-day savings cycles!</p>
+                </div>
+              </div>
+              <button
+                onClick={onClaimWelcomeBonus}
+                className="w-full sm:w-auto shrink-0 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 px-6 py-3 rounded-xl font-black shadow-lg text-sm transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 relative z-10"
+              >
+                <span>🎉</span>
+                <span>Claim 1,000 RWF Now</span>
+              </button>
+            </div>
+          ) : (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5 flex items-center justify-between text-xs text-emerald-800">
+              <div className="flex items-center gap-2">
+                <span>✅</span>
+                <span className="font-bold">Welcome Bonus Claimed:</span>
+                <span>1,000 RWF Starter Bonus has been credited to your funds.</span>
+              </div>
+              <span className="font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">+1,000 RWF Active</span>
+            </div>
+          )}
+
+          {/* Hero Bento Banner */}
+          <div className="bg-gradient-to-br from-[#001A40] via-[#05285D] to-[#001433] rounded-3xl p-6 sm:p-10 text-white shadow-xl relative overflow-hidden border border-slate-700/60">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-amber-400/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div className="relative z-10 max-w-3xl space-y-4">
+              <div className="inline-flex items-center gap-2 bg-amber-400/20 text-amber-300 px-3.5 py-1.5 rounded-full text-xs font-extrabold border border-amber-400/30">
+                <span>🛡️</span> Insured Liquidity Reserve: {formatMoney(reserveFund)}
+              </div>
+              
+              <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight">
+                Automated <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-amber-200">3-Day High-Yield</span> Savings Cycles
+              </h1>
+              
+              <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
+                Deposit safely into automated fixed-yield 3-day micro-cycles. Earn guaranteed 2.0% returns with instant MTN & Airtel Mobile Money settlements.
+              </p>
+
+              <div className="pt-2 flex flex-wrap gap-4">
+                <button
+                  onClick={() => onSelectTier(tiers[2])}
+                  className="bg-gradient-to-r from-[#E5A93B] to-amber-400 text-[#001A40] px-6 py-3 rounded-xl font-extrabold shadow-lg hover:brightness-110 active:scale-95 transition-all text-sm"
+                >
+                  🚀 Start 3-Day Cycle ({formatMoney(15000)})
+                </button>
+                <a
+                  href="#calculator-section"
+                  className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-6 py-3 rounded-xl font-bold transition-all text-sm flex items-center gap-2"
+                >
+                  <span>📈</span> Calculate Earnings
+                </a>
+              </div>
+            </div>
+
+            {/* Quick Metrics Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-8 pt-8 border-t border-slate-700/60">
+              <div>
+                <div className="text-xs text-slate-400 font-semibold">Active Deposits</div>
+                <div className="text-xl sm:text-2xl font-extrabold text-white mt-1">{formatMoney(totalDeposited)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-400 font-semibold">Total Yield Accrued</div>
+                <div className="text-xl sm:text-2xl font-extrabold text-emerald-400 mt-1">+{formatMoney(totalEarned)}</div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-400 font-semibold">Active Cycles</div>
+                <div className="text-xl sm:text-2xl font-extrabold text-amber-400 mt-1">{activeCyclesCount} Active</div>
+              </div>
+              <div>
+                <div className="text-xs text-slate-400 font-semibold">Lock Duration</div>
+                <div className="text-xl sm:text-2xl font-extrabold text-blue-300 mt-1">3 Days Fixed</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Available Savings Tiers */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">Choose a Savings Tier</h2>
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">Select a deposit tier to start compounding returns every 72 hours</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {tiers.map((tier) => {
+                const profit = Math.round(tier.minAmount * tier.rate);
+                const isFeatured = tier.id === 'tier_c';
+                return (
+                  <div
+                    key={tier.id}
+                    className={`bg-white dark:bg-slate-900 rounded-2xl p-6 border transition-all hover:shadow-xl flex flex-col justify-between relative ${isFeatured ? 'border-amber-400 dark:border-amber-400/80 ring-2 ring-amber-400/20 shadow-md' : 'border-slate-200 dark:border-slate-800'}`}
+                  >
+                    {isFeatured && (
+                      <span className="absolute -top-3 right-4 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-full shadow">
+                        ⭐ Most Savers Choice
+                      </span>
+                    )}
+
+                    <div>
+                      <div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{tier.badge}</div>
+                      <h3 className="text-lg font-extrabold text-slate-900 dark:text-white mt-1">{tier.name}</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{tier.desc}</p>
+
+                      <div className="my-5 p-3.5 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-100 dark:border-slate-800/80 space-y-1.5">
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500 dark:text-slate-400">Deposit Principal:</span>
+                          <span className="font-extrabold text-slate-900 dark:text-white">{formatMoney(tier.minAmount)}</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500 dark:text-slate-400">Lock Duration:</span>
+                          <span className="font-bold text-blue-600 dark:text-blue-400">3 Days (72h)</span>
+                        </div>
+                        <div className="flex justify-between text-xs">
+                          <span className="text-slate-500 dark:text-slate-400">3-Day Profit (+2.0%):</span>
+                          <span className="font-extrabold text-emerald-600 dark:text-emerald-400">+{formatMoney(profit)}</span>
+                        </div>
+                        <div className="pt-1.5 border-t border-slate-200 dark:border-slate-800 flex justify-between text-xs font-extrabold">
+                          <span className="text-slate-700 dark:text-slate-300">Total Matured Payout:</span>
+                          <span className="text-slate-950 dark:text-amber-300">{formatMoney(tier.minAmount + profit)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => onSelectTier(tier)}
+                      className={`w-full py-2.5 rounded-xl font-extrabold text-sm transition-all shadow-sm ${isFeatured ? 'bg-[#001A40] text-amber-400 hover:bg-[#05285D] dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300' : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white'}`}
+                    >
+                      Deposit {formatMoney(tier.minAmount)}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Interactive Yield Calculator & MoMo Deposit Guide */}
+          <div id="calculator-section" className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Calculator Card */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-md">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center text-xl font-bold">
+                  📈
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Compound Yield Calculator</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Estimate profits across consecutive 3-day micro cycles</p>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Deposit Principal (RWF):</label>
+                  <input
+                    type="number"
+                    value={calcPrincipal}
+                    onChange={(e) => setCalcPrincipal(Number(e.target.value))}
+                    step="1000"
+                    min="1000"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 font-extrabold text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Number of Consecutive Cycles:</label>
+                  <select
+                    value={calcCycles}
+                    onChange={(e) => setCalcCycles(Number(e.target.value))}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                  >
+                    <option value="1">1 Cycle (3 Days)</option>
+                    <option value="2">2 Cycles (6 Days)</option>
+                    <option value="3">3 Cycles (9 Days)</option>
+                    <option value="5">5 Cycles (15 Days)</option>
+                    <option value="10">10 Cycles (30 Days / 1 Month)</option>
+                  </select>
+                </div>
+
+                {/* Calculation Output Box */}
+                <div className="bg-[#001A40] text-white p-5 rounded-2xl mt-4 space-y-3">
+                  <div className="flex justify-between text-xs text-slate-300">
+                    <span>Duration:</span>
+                    <span className="font-bold text-white">{calcYield.days} Days ({calcCycles} Cycles)</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-slate-300">
+                    <span>Estimated Net Profit:</span>
+                    <span className="font-extrabold text-emerald-400">+{formatMoney(calcYield.totalProfit)}</span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-700 flex justify-between items-baseline">
+                    <span className="text-xs font-semibold text-slate-300">Total Maturity Value:</span>
+                    <span className="text-2xl font-extrabold text-amber-400">{formatMoney(calcYield.totalPayout)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* MoMo Merchant Instructions */}
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-md flex flex-col justify-between">
+              <div>
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center text-xl font-bold">
+                    💳
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Instant MTN MoMo Deposition</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Official verified merchant deposition instructions</p>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-2xl p-4 mb-4">
+                  <div className="text-xs font-bold text-blue-900 dark:text-blue-300 uppercase tracking-wider">MTN Mobile Money Merchant Code:</div>
+                  <div className="text-2xl font-black text-blue-700 dark:text-amber-400 font-mono mt-1 select-all bg-blue-100/80 dark:bg-blue-900/60 px-3 py-1.5 rounded-lg inline-block">
+                    *182*8*1*1799283#
+                  </div>
+                  <div className="text-xs text-blue-600 dark:text-blue-300 font-semibold mt-2">
+                    Merchant Name: SMART FUTURE CAPITAL Ltd.
+                  </div>
+                </div>
+
+                <ol className="text-xs text-slate-600 dark:text-slate-300 space-y-2 list-decimal list-inside font-medium leading-relaxed">
+                  <li>Dial the MTN merchant code or use Airtel Money transfer.</li>
+                  <li>Enter the required Tier deposit amount (e.g. 15,000 RWF).</li>
+                  <li>Confirm recipient is <strong className="text-slate-900 dark:text-white">SMART FUTURE CAPITAL</strong> and input your PIN.</li>
+                  <li>Copy the SMS Transaction ID and click the Deposit button to activate.</li>
+                </ol>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  onClick={() => onSelectTier(tiers[2])}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-xl shadow transition-all text-sm flex items-center justify-center gap-2"
+                >
+                  <span>✅</span> Submit MoMo Transaction ID
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Refer-a-Friend & Referral Link Generator Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-md space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center text-2xl font-bold">
+                  🎁
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-300 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-700">
+                      0.5% BONUS BOOSTER
+                    </span>
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">+1,000 RWF per friend</span>
+                  </div>
+                  <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">Refer a Friend Program</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Invite friends to Future Smart Capital and earn a +0.5% yield boost on your next cycle!</p>
+                </div>
+              </div>
+
+              {pendingBonusPercent > 0 && (
+                <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 rounded-2xl px-4 py-2 text-right">
+                  <div className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Next Cycle Boost:</div>
+                  <div className="text-lg font-black text-emerald-600 dark:text-emerald-300">+{ (pendingBonusPercent * 100).toFixed(1) }% Boost Active ⚡</div>
+                </div>
+              )}
+            </div>
+
+            {/* Unique Link Generator Box */}
+            <div className="bg-slate-50 dark:bg-slate-950/60 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  Your Unique Referral Link & Code ({referralCode})
+                </label>
+                <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-700">
+                  Instant Auto-Tracking
+                </span>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={referralLink}
+                  className="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-mono font-bold text-slate-800 dark:text-slate-100 focus:outline-none select-all"
+                />
+                <button
+                  onClick={handleCopyLink}
+                  className="bg-[#001A40] hover:bg-[#05285D] text-amber-400 font-extrabold px-5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm shrink-0"
+                >
+                  <span>{copied ? '✅' : '📋'}</span>
+                  <span>{copied ? 'Copied!' : 'Copy Link'}</span>
+                </button>
+                <button
+                  onClick={handleShareWhatsApp}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm shrink-0"
+                >
+                  <span>💬</span>
+                  <span>Share WhatsApp</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Test Referral Simulator */}
+            <div>
+              <button
+                onClick={() => {
+                  const names = ['Eric Mugisha', 'Aline Uwase', 'Patrick Hakizimana', 'Diane Keza', 'Jean-Paul Habimana'];
+                  onSimulateReferral(names[Math.floor(Math.random() * names.length)]);
+                }}
+                className="w-full border-2 border-dashed border-amber-400 dark:border-amber-500/60 bg-amber-50/60 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-900 dark:text-amber-300 font-extrabold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-2"
+              >
+                <span>⚡</span>
+                <span>Test Referral: Simulate Friend Joining with Your Link</span>
+              </button>
+            </div>
+
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Friends Invited</div>
+                <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{referredFriends.length}</div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Registered via link</div>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Next Cycle Yield Boost</div>
+                <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">+{ (pendingBonusPercent * 100).toFixed(1) }%</div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Applies to your next cycle</div>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Referral Wallet Cash</div>
+                <div className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">{formatMoney(referralBonusCash)}</div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Credited to funds</div>
+              </div>
+            </div>
+
+            {/* Invited Friends Tracking List */}
+            {referredFriends.length > 0 && (
+              <div className="space-y-3 pt-2">
+                <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Invited Friends Registration History ({referredFriends.length})</h4>
+                <div className="space-y-2">
+                  {referredFriends.map((friend) => (
+                    <div key={friend.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center justify-center">
+                          {friend.name.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="text-xs font-extrabold text-slate-900 dark:text-white">{friend.name}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">{friend.phone} • {friend.joinedAt}</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 px-2.5 py-1 rounded-full">
+                        {friend.bonusGranted || '+0.5% Next Cycle Boost ⚡'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // CYCLES VIEW
+    function CyclesView({ cycles, formatMoney, onOpenDeposit }) {
+      return (
+        <div className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">Your Active Savings Cycles</h2>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">All active 72-hour liquidity locks and accrued interest</p>
+            </div>
+            <button
+              onClick={onOpenDeposit}
+              className="bg-[#001A40] text-amber-400 px-5 py-2.5 rounded-xl font-extrabold text-sm shadow hover:bg-[#05285D] dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300 transition-all"
+            >
+              + Start New Cycle
+            </button>
+          </div>
+
+          {cycles.length === 0 ? (
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+              <div className="text-5xl">⏳</div>
+              <h3 className="text-lg font-extrabold text-slate-800 dark:text-white">No Active Savings Cycles Yet</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">Start a 3-day savings cycle now to lock in your 2.0% returns.</p>
+              <button
+                onClick={onOpenDeposit}
+                className="bg-amber-400 text-slate-950 font-extrabold px-6 py-2.5 rounded-xl text-sm shadow hover:bg-amber-300 transition-all"
+              >
+                Explore Tiers & Deposit
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {cycles.map((c) => {
+                const now = Date.now();
+                const totalDuration = c.maturityDate - c.startedAt;
+                const elapsed = Math.min(totalDuration, Math.max(0, now - c.startedAt));
+                const progressPct = Math.round((elapsed / totalDuration) * 100);
+                const remainingMs = Math.max(0, c.maturityDate - now);
+                const remainingHours = Math.round(remainingMs / 3600000);
+
+                return (
+                  <div key={c.id} className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span className="font-extrabold text-slate-900 dark:text-white text-base">{c.tierName}</span>
+                      </div>
+                      <span className="text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 px-2 py-0.5 rounded">
+                        {c.id}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 bg-slate-50 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800/80 text-center">
+                      <div>
+                        <div className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">Principal</div>
+                        <div className="font-extrabold text-xs text-slate-900 dark:text-white mt-0.5">{formatMoney(c.depositAmount)}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">Yield (+2.0%)</div>
+                        <div className="font-extrabold text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">+{formatMoney(c.profit)}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">Total Payout</div>
+                        <div className="font-extrabold text-xs text-slate-950 dark:text-amber-300 mt-0.5">{formatMoney(c.totalPayout)}</div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="flex justify-between text-xs font-semibold mb-1">
+                        <span className="text-slate-500 dark:text-slate-400">Maturity Progress:</span>
+                        <span className="text-blue-600 dark:text-blue-400 font-bold">{progressPct}% ({remainingHours}h remaining)</span>
+                      </div>
+                      <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden">
+                        <div className="bg-gradient-to-r from-blue-600 to-amber-400 h-2 rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }}></div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <span className="text-slate-400 dark:text-slate-500">Lock: 3 Days Fixed</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">100% Reserve Insured 🛡️</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // WITHDRAW VIEW
+    function WithdrawView({ withdrawals, formatMoney, availableBalance, onSubmitWithdraw }) {
+      const [phone, setPhone] = useState('');
+      const [amount, setAmount] = useState('15000');
+
+      return (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-1 bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-md space-y-5">
+            <div>
+              <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Request Withdrawal</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">Payout directly to your MTN or Airtel Mobile Money</p>
+            </div>
+
+            <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-700/60 rounded-2xl p-4">
+              <div className="text-xs text-amber-800 dark:text-amber-300 font-semibold">Available Liquidity:</div>
+              <div className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">{formatMoney(availableBalance)}</div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">MTN / Airtel Phone Number:</label>
+                <input
+                  type="text"
+                  placeholder="+250 788 123 456"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 font-bold text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Withdrawal Amount (RWF):</label>
+                <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  step="1000"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 font-extrabold text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                />
+              </div>
+
+              <button
+                onClick={() => onSubmitWithdraw(phone, amount)}
+                className="w-full bg-[#001A40] hover:bg-[#05285D] dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300 text-amber-400 font-extrabold py-3 rounded-xl shadow transition-all text-sm"
+              >
+                Submit MoMo Withdrawal
+              </button>
+            </div>
+          </div>
+
+          <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-md space-y-4">
+            <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Withdrawal History</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Recent payouts processed via the liquidity reserve</p>
+
+            <div className="space-y-3 pt-2">
+              {withdrawals.map((w) => (
+                <div key={w.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div>
+                    <div className="font-extrabold text-sm text-slate-900 dark:text-white">{formatMoney(w.amount)}</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">{w.phone} • {w.time}</div>
+                  </div>
+                  <span className={`text-[10px] font-extrabold px-3 py-1 rounded-full uppercase ${w.status === 'APPROVED' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' : 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'}`}>
+                    {w.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ADMIN HUB VIEW
+    function AdminHubView({ reserveFund, onUpdateReserve, deposits, withdrawals, cycles, formatMoney, announcements, onAddAnnouncement }) {
+      const [newReserve, setNewReserve] = useState(reserveFund);
+      const [annTitle, setAnnTitle] = useState('');
+      const [annContent, setAnnContent] = useState('');
+      const [annImageUrl, setAnnImageUrl] = useState('');
+      const [annCategory, setAnnCategory] = useState('NEWS');
+      const [annUrgent, setAnnUrgent] = useState(false);
+
+      const PRESET_IMAGES = [
+        { label: '📈 50% Profit', url: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=800&q=80' },
+        { label: '🛡️ 20M Reserve', url: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&w=800&q=80' },
+        { label: '📱 MoMo Code', url: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=800&q=80' },
+        { label: '🎉 Special Bonus', url: 'https://images.unsplash.com/photo-1553729459-efe14ef6055d?auto=format&fit=crop&w=800&q=80' }
+      ];
+
+      return (
+        <div className="space-y-8">
+          <div>
+            <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">Admin Control Hub</h2>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">Manage platform reserves, announcements with images, and transaction auditing</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Reserve Fund Controller */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+              <div className="text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase">Capital Reserve Pool</div>
+              <div className="text-2xl font-black text-[#001A40] dark:text-amber-400">{formatMoney(reserveFund)}</div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Update Reserve (RWF):</label>
+                <input
+                  type="number"
+                  value={newReserve}
+                  onChange={(e) => setNewReserve(Number(e.target.value))}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-slate-900 dark:text-white"
+                />
+              </div>
+              <button
+                onClick={() => onUpdateReserve(newReserve)}
+                className="w-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold py-2 rounded-xl text-xs transition-colors"
+              >
+                Save Reserve Pool
+              </button>
+            </div>
+
+            {/* Platform Broadcast With Image */}
+            <div className="md:col-span-2 bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase">Broadcast Announcement (with Image)</div>
+                <span className="text-[10px] font-bold bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full">Shown in Website Header</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  placeholder="Announcement Title *"
+                  value={annTitle}
+                  onChange={(e) => setAnnTitle(e.target.value)}
+                  className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-slate-900 dark:text-white"
+                />
+                <input
+                  type="text"
+                  placeholder="Announcement Image URL (Optional)"
+                  value={annImageUrl}
+                  onChange={(e) => setAnnImageUrl(e.target.value)}
+                  className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-medium text-slate-900 dark:text-white"
+                />
+              </div>
+
+              {/* Preset Image Options */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Preset Banners:</span>
+                {PRESET_IMAGES.map((img, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setAnnImageUrl(img.url)}
+                    className="text-[10px] font-bold px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 hover:text-amber-900 dark:hover:text-amber-300 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-all"
+                  >
+                    {img.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Live Preview If Image Present */}
+              {annImageUrl && (
+                <div className="relative h-28 w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
+                  <img src={annImageUrl} alt="Preview" className="w-full h-full object-cover" />
+                  <span className="absolute top-2 left-2 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                    Image Preview
+                  </span>
+                  <button
+                    onClick={() => setAnnImageUrl('')}
+                    className="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded hover:bg-red-700"
+                  >
+                    ✕ Remove
+                  </button>
+                </div>
+              )}
+
+              <textarea
+                rows="2"
+                placeholder="Announcement Details / Message *"
+                value={annContent}
+                onChange={(e) => setAnnContent(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-medium text-slate-900 dark:text-white"
+              ></textarea>
+
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <select
+                    value={annCategory}
+                    onChange={(e) => setAnnCategory(e.target.value)}
+                    className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700"
+                  >
+                    <option value="NEWS">NEWS</option>
+                    <option value="IMPORTANT">IMPORTANT</option>
+                    <option value="PROMO">PROMO</option>
+                  </select>
+
+                  <label className="flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={annUrgent}
+                      onChange={(e) => setAnnUrgent(e.target.checked)}
+                      className="rounded text-amber-500 focus:ring-amber-400"
+                    />
+                    <span>Priority Urgent</span>
+                  </label>
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (annTitle.trim() && annContent.trim()) {
+                      onAddAnnouncement({
+                        id: Date.now().toString(),
+                        title: annTitle,
+                        content: annContent,
+                        category: annCategory,
+                        imageUrl: annImageUrl.trim() || null,
+                        time: 'Just now',
+                        urgent: annUrgent
+                      });
+                      setAnnTitle('');
+                      setAnnContent('');
+                      setAnnImageUrl('');
+                    }
+                  }}
+                  className="bg-[#001A40] text-amber-400 dark:bg-amber-400 dark:text-slate-950 font-extrabold px-5 py-2 rounded-xl text-xs hover:bg-[#05285D] dark:hover:bg-amber-300 transition-all shadow"
+                >
+                  Publish Announcement 📢
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Active Announcements List */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Active Header Announcements ({announcements.length})</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {announcements.map((a) => (
+                <div key={a.id} className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-950/60 flex flex-col">
+                  {a.imageUrl && (
+                    <div className="h-28 w-full overflow-hidden bg-slate-200 dark:bg-slate-800">
+                      <img src={a.imageUrl} alt={a.title} className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <div className="p-3 flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded uppercase ${a.urgent ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300' : 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300'}`}>
+                          {a.category || 'NEWS'}
+                        </span>
+                        <span className="text-[10px] text-slate-400">{a.time || 'Recent'}</span>
+                      </div>
+                      <h4 className="font-extrabold text-xs text-slate-900 dark:text-white line-clamp-1">{a.title}</h4>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">{a.content}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ANNOUNCEMENTS & NOTIFICATIONS MODAL
+    function AnnouncementsModal({ announcements, onClose, onDeleteAnnouncement }) {
+      return (
+        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-800 relative animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-300 flex items-center justify-center font-bold text-xl">
+                  📢
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Notifications & Announcements</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">SMART FUTURE CAPITAL (SFC) official updates</p>
+                </div>
+              </div>
+
+              <button
+                onClick={onClose}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold text-xl p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="overflow-y-auto custom-scrollbar py-4 space-y-4 flex-1">
+              {announcements.length === 0 ? (
+                <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-sm font-semibold">
+                  No active announcements at this time.
+                </div>
+              ) : (
+                announcements.map((a) => (
+                  <div
+                    key={a.id}
+                    className={`rounded-2xl border overflow-hidden transition-all ${a.urgent ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800' : 'bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800'}`}
+                  >
+                    {/* Announcement Image */}
+                    {a.imageUrl && (
+                      <div className="h-44 sm:h-52 w-full overflow-hidden bg-slate-200 dark:bg-slate-800 relative">
+                        <img
+                          src={a.imageUrl}
+                          alt={a.title}
+                          className="w-full h-full object-cover hover:scale-105 transition-all duration-300"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent flex items-end p-4">
+                          <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full text-white shadow ${a.urgent ? 'bg-red-600' : 'bg-blue-600'}`}>
+                            {a.category || 'NEWS'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="p-4 sm:p-5">
+                      {!a.imageUrl && (
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${a.urgent ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300' : 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300'}`}>
+                            {a.category || 'NEWS'}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-bold">{a.time || 'Recent'}</span>
+                        </div>
+                      )}
+
+                      <h4 className="text-base font-extrabold text-slate-900 dark:text-white leading-snug">{a.title}</h4>
+                      <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-2 font-medium leading-relaxed">{a.content}</p>
+
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-800 text-[11px] text-slate-400 font-semibold">
+                        <span>Official SFC System Broadcast</span>
+                        <span>{a.time || 'Live'}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                onClick={onClose}
+                className="w-full bg-[#001A40] hover:bg-[#05285D] dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300 text-amber-400 font-extrabold py-3 rounded-xl shadow transition-all text-sm"
+              >
+                Close Announcements
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // DEPOSIT MODAL WITH MTN MERCHANT QR CODE & USSD SHORTCUTS
+    function DepositModal({ tier, formatMoney, onClose, onSubmit }) {
+      const [phone, setPhone] = useState('');
+      const [amount, setAmount] = useState(tier.minAmount);
+      const [txId, setTxId] = useState('');
+      const [paymentTab, setPaymentTab] = useState('qr'); // 'qr' or 'ussd'
+      const [copiedCode, setCopiedCode] = useState(false);
+      const [copiedMerchant, setCopiedMerchant] = useState(false);
+
+      const merchantCode = '1799283';
+      const ussdString = '*182*8*1*1799283#';
+      // QR Code payload encoded for mobile money dialing and scanning
+      const qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent('tel:*182*8*1*1799283#')}&color=001A40&bgcolor=FFFFFF&margin=8`;
+
+      const handleCopyUSSD = () => {
+        navigator.clipboard.writeText(ussdString);
+        setCopiedCode(true);
+        setTimeout(() => setCopiedCode(false), 2500);
+      };
+
+      const handleCopyMerchant = () => {
+        navigator.clipboard.writeText(merchantCode);
+        setCopiedMerchant(true);
+        setTimeout(() => setCopiedMerchant(false), 2500);
+      };
+
+      const handleSubmit = (e) => {
+        e.preventDefault();
+        if (!txId.trim()) {
+          alert('Please enter your MoMo transaction ID');
+          return;
+        }
+        onSubmit({ phone, amount, txId, tier });
+      };
+
+      return (
+        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-800 relative animate-in fade-in zoom-in duration-200 my-8">
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold text-lg p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              ✕
+            </button>
+
+            <div className="space-y-5">
+              {/* Header */}
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-extrabold bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    ⚡ 3-Day Vault
+                  </span>
+                  <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">+2.0% Guaranteed</span>
+                </div>
+                <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">Deposit for {tier.name}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Scan QR Code with your camera / MoMo app or dial direct USSD code</p>
+              </div>
+
+              {/* Payment Mode Selector Tabs */}
+              <div className="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => setPaymentTab('qr')}
+                  className={`py-2 text-xs font-extrabold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+                    paymentTab === 'qr'
+                      ? 'bg-amber-400 text-slate-950 shadow-md font-black'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <span>📷</span>
+                  <span>Scan MTN QR Code</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentTab('ussd')}
+                  className={`py-2 text-xs font-extrabold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+                    paymentTab === 'ussd'
+                      ? 'bg-amber-400 text-slate-950 shadow-md font-black'
+                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <span>🔢</span>
+                  <span>USSD Code Manual</span>
+                </button>
+              </div>
+
+              {/* QR Code Tab View */}
+              {paymentTab === 'qr' ? (
+                <div className="bg-amber-500/10 dark:bg-amber-500/5 border-2 border-amber-400/60 dark:border-amber-400/40 rounded-2xl p-4 flex flex-col items-center text-center space-y-3">
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-[11px] font-extrabold uppercase tracking-wider text-amber-800 dark:text-amber-300 bg-amber-200/60 dark:bg-amber-900/40 px-2 py-0.5 rounded">
+                      MTN MoMo Pay Merchant
+                    </span>
+                    <span className="text-xs font-mono font-bold text-slate-700 dark:text-slate-300">
+                      ID: <b className="text-blue-600 dark:text-amber-400">1799283</b>
+                    </span>
+                  </div>
+
+                  {/* QR Code Box */}
+                  <div className="relative bg-white p-3 rounded-2xl shadow-lg border-2 border-amber-400 flex flex-col items-center">
+                    <img
+                      src={qrDataUrl}
+                      alt="MTN MoMo Merchant QR Code"
+                      className="w-44 h-44 object-contain rounded-lg"
+                      loading="lazy"
+                    />
+                    <div className="mt-2 bg-[#001A40] text-white text-[11px] font-extrabold px-3 py-1 rounded-full flex items-center gap-1.5 shadow">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                      <span>SMART FUTURE CAPITAL</span>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-slate-600 dark:text-slate-300 font-medium">
+                    Point phone camera or MTN MoMo scanner at this QR code to auto-dial and deposit.
+                  </p>
+
+                  {/* Quick Action Buttons */}
+                  <div className="flex flex-wrap gap-2 w-full pt-1">
+                    <a
+                      href={`tel:*182*8*1*1799283%23`}
+                      className="flex-1 min-w-[130px] bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white py-2 px-3 rounded-xl text-xs font-bold shadow flex items-center justify-center gap-1.5 transition-transform active:scale-95"
+                    >
+                      <span>📞</span>
+                      <span>Tap to Dial USSD</span>
+                    </a>
+                    <button
+                      type="button"
+                      onClick={handleCopyMerchant}
+                      className="flex-1 min-w-[130px] bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <span>{copiedMerchant ? '✅' : '📋'}</span>
+                      <span>{copiedMerchant ? 'Copied ID!' : 'Copy ID (1799283)'}</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* USSD Manual Code Tab View */
+                <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 p-4 rounded-2xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-blue-900 dark:text-blue-300 font-bold">1. Dial MTN MoMo Merchant:</span>
+                    <span className="text-[10px] bg-blue-200 dark:bg-blue-900 text-blue-900 dark:text-blue-200 px-2 py-0.5 rounded font-extrabold uppercase">Instant</span>
+                  </div>
+
+                  <div className="flex items-center justify-between bg-blue-100/90 dark:bg-blue-900/60 p-2.5 rounded-xl border border-blue-300 dark:border-blue-700">
+                    <span className="text-lg sm:text-xl font-black font-mono text-blue-800 dark:text-blue-200 tracking-wide">
+                      *182*8*1*1799283#
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCopyUSSD}
+                      className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-extrabold shadow active:scale-95 transition-all"
+                    >
+                      {copiedCode ? '✅ Copied' : '📋 Copy'}
+                    </button>
+                  </div>
+
+                  <div className="text-xs text-blue-800 dark:text-blue-300 space-y-1">
+                    <div className="flex items-center gap-1">
+                      <span>🏢</span>
+                      <span>Merchant Name: <b>SMART FUTURE CAPITAL</b></span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span>🔢</span>
+                      <span>Merchant Code: <b>1799283</b> (Alt: 1799273)</span>
+                    </div>
+                  </div>
+
+                  <a
+                    href="tel:*182*8*1*1799283%23"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-2 shadow"
+                  >
+                    <span>📞</span>
+                    <span>Tap to Dial *182*8*1*1799283# Directly</span>
+                  </a>
+                </div>
+              )}
+
+              {/* Deposit Confirmation Form */}
+              <form onSubmit={handleSubmit} className="space-y-3.5 pt-1">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Your MoMo / Airtel Phone Number:
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="+250 788 000 000"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    Deposit Amount (RWF):
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={amount}
+                    onChange={(e) => setAmount(Number(e.target.value))}
+                    min={tier.minAmount}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-extrabold text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                  />
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 block">
+                    Minimum for this tier: {formatMoney(tier.minAmount)}
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                    MoMo SMS Transaction ID:
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. TXN89327110 or 12389102"
+                    value={txId}
+                    onChange={(e) => setTxId(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm font-mono font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                  />
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 block">
+                    Copy the transaction reference from the MTN MoMo SMS receipt
+                  </span>
+                </div>
+
+                <div className="pt-2 flex gap-3">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-1/2 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="w-1/2 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-sm shadow-md transition-transform active:scale-95 flex items-center justify-center gap-1.5"
+                  >
+                    <span>🚀</span>
+                    <span>Confirm & Start</span>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Render the React App
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
   </script>
 </body>
 </html>

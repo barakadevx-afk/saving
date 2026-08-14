@@ -28,7 +28,10 @@ data class WalletEntity(
     val totalEarned: Double = 0.0,
     val totalDeposited: Double = 0.0,
     val totalWithdrawn: Double = 0.0,
-    val referralBonus: Double = 0.0
+    val referralBonus: Double = 0.0,
+    val pendingBonusPercent: Double = 0.0, // Extra bonus percentage boost for the next cycle (e.g. 0.005 for +0.5%)
+    val totalFriendsReferred: Int = 0,
+    val hasClaimedWelcomeBonus: Boolean = false
 )
 
 enum class CycleStatus { ACTIVE_LOCK, COMPLETED, AVAILABLE }
@@ -44,10 +47,11 @@ data class SavingsCycleEntity(
     val startDate: Long,
     val endDate: Long,
     val status: CycleStatus = CycleStatus.ACTIVE_LOCK,
-    val settledAt: Long? = null
+    val settledAt: Long? = null,
+    val bonusRateApplied: Double = 0.0 // Extra yield percentage earned via referral bonus boost
 )
 
-enum class TransactionType { DEPOSIT, CYCLE_REWARD, WITHDRAWAL, ADMIN_ADJUSTMENT, REFERRAL_BONUS }
+enum class TransactionType { DEPOSIT, CYCLE_REWARD, WITHDRAWAL, ADMIN_ADJUSTMENT, REFERRAL_BONUS, WELCOME_BONUS }
 enum class TransactionStatus { LOCKED, COMPLETED, APPROVED, PENDING, REJECTED }
 
 @Entity(tableName = "transactions")
@@ -110,7 +114,8 @@ data class AnnouncementEntity(
     val category: String = "NEWS", // "NEWS", "URGENT", "MAINTENANCE", "PROMO"
     val postedBy: String = "SFC Admin",
     val timestamp: Long = System.currentTimeMillis(),
-    val isImportant: Boolean = false
+    val isImportant: Boolean = false,
+    val imageUrl: String? = null
 )
 
 @Entity(tableName = "admin_logs")

@@ -1,27 +1,31 @@
 {
   "name": "smart-future-capital",
   "version": "3.0.0",
-  "description": "SMART FUTURE CAPITAL (SFC) - Automated 3-Day High-Yield Micro-Savings & Capital Growth Platform",
-  "main": "public/index.html",
+  "description": "SMART FUTURE CAPITAL (SFC) - React JSX & Backend API High-Yield Savings Platform",
+  "main": "server.js",
   "scripts": {
-    "dev": "npx serve public",
-    "build": "echo 'Build completed for Vercel Edge Hosting'",
-    "start": "npx serve public"
+    "dev": "node server.js",
+    "build": "echo 'Build completed for Vercel'",
+    "start": "node server.js"
   },
   "keywords": [
+    "react",
+    "jsx",
+    "backend",
+    "vercel",
     "savings",
     "rwanda",
     "fintech",
-    "microfinance",
-    "yield",
-    "sfc",
     "smart-future-capital",
-    "vercel"
+    "sfc"
   ],
   "author": "SMART FUTURE CAPITAL (SFC)",
   "license": "MIT",
   "dependencies": {
-    "serve": "^14.2.4"
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
     "vercel": "^39.0.0"

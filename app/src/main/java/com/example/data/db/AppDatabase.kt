@@ -20,7 +20,7 @@ import com.example.data.model.*
         AdminLogEntity::class,
         AnnouncementEntity::class
     ],
-    version = 3,
+    version = 5,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
