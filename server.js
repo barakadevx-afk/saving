@@ -10,6 +10,11 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(__dirname));
 
+app.get(['/favicon.ico', '/favicon.svg'], (req, res) => {
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.sendFile(path.join(__dirname, 'public', 'favicon.svg'));
+});
+
 // In-Memory Database Store (Syncs across endpoints)
 let db = {
   adminConfig: {
@@ -131,10 +136,12 @@ app.get('/api/deposits', (req, res) => {
 });
 
 app.post('/api/deposits', (req, res) => {
-  const { userId, phone, amount, momoTxId, network, tierId } = req.body;
-  if (!amount || !momoTxId) {
-    return res.status(400).json({ success: false, error: 'Amount and MoMo Transaction ID are required' });
+  const { userId, phone, amount, momoTxId, network, paymentMethod, tierId, bankReference, cryptoHash } = req.body;
+  if (!amount) {
+    return res.status(400).json({ success: false, error: 'Deposit amount is required' });
   }
+
+  const txReference = momoTxId || bankReference || cryptoHash || ('TXN-' + Math.random().toString(36).substring(2, 10).toUpperCase());
 
   const deposit = {
     id: 'DEP-' + Math.floor(1000 + Math.random() * 9000),
@@ -142,8 +149,9 @@ app.post('/api/deposits', (req, res) => {
     phone: phone || '+250788000000',
     amount: Number(amount),
     currency: 'RWF',
-    momoTxId: momoTxId.trim(),
-    network: network || 'MTN MoMo',
+    momoTxId: txReference.trim(),
+    network: network || paymentMethod || 'MTN MoMo',
+    paymentMethod: paymentMethod || network || 'MTN Mobile Money',
     status: 'APPROVED',
     createdAt: Date.now()
   };
@@ -151,10 +159,11 @@ app.post('/api/deposits', (req, res) => {
   db.deposits.unshift(deposit);
 
   // Auto-activate cycle
+  let activatedCycle = null;
   if (tierId) {
     const tier = db.tiers.find(t => t.id === tierId) || db.tiers[0];
     const expectedReturn = Math.round(deposit.amount * tier.interestRate);
-    const newCycle = {
+    activatedCycle = {
       id: 'CYC-' + Math.floor(1000 + Math.random() * 9000),
       userId: deposit.userId,
       tierId: tier.id,
@@ -169,10 +178,62 @@ app.post('/api/deposits', (req, res) => {
       status: 'ACTIVE',
       currency: 'RWF'
     };
-    db.cycles.unshift(newCycle);
+    db.cycles.unshift(activatedCycle);
   }
 
-  res.json({ success: true, message: 'Deposit recorded and cycle activated!', deposit });
+  res.json({ success: true, message: 'Deposit recorded and 3-day cycle activated!', deposit, cycle: activatedCycle });
+});
+
+// API: Process Instant Online Payment Gateway (MoMo Push / Airtel / Card / Bank)
+app.post('/api/payments/process', (req, res) => {
+  const { paymentMethod, phone, amount, cardNumber, cardCvc, cryptoNetwork, tierId, userId } = req.body;
+  const numAmount = Number(amount);
+  if (!numAmount || numAmount <= 0) {
+    return res.status(400).json({ success: false, error: 'Valid payment amount is required' });
+  }
+
+  const txId = 'PAY-' + Math.floor(100000 + Math.random() * 900000);
+  const deposit = {
+    id: 'DEP-' + Math.floor(1000 + Math.random() * 9000),
+    userId: userId || 'USER-1',
+    phone: phone || '+250788000000',
+    amount: numAmount,
+    currency: 'RWF',
+    momoTxId: txId,
+    network: paymentMethod || 'MTN MoMo Push',
+    paymentMethod: paymentMethod || 'MTN Mobile Money',
+    status: 'APPROVED',
+    createdAt: Date.now()
+  };
+
+  db.deposits.unshift(deposit);
+
+  const tier = db.tiers.find(t => t.id === tierId) || db.tiers[0];
+  const expectedReturn = Math.round(numAmount * tier.interestRate);
+  const newCycle = {
+    id: 'CYC-' + Math.floor(1000 + Math.random() * 9000),
+    userId: deposit.userId,
+    tierId: tier.id,
+    tierName: tier.name,
+    depositAmount: numAmount,
+    interestRate: tier.interestRate,
+    expectedReturnAmount: expectedReturn,
+    totalPayoutAmount: numAmount + expectedReturn,
+    startedAt: Date.now(),
+    maturityDate: Date.now() + (tier.durationDays * 86400000),
+    durationDays: tier.durationDays,
+    status: 'ACTIVE',
+    currency: 'RWF'
+  };
+  db.cycles.unshift(newCycle);
+
+  res.json({
+    success: true,
+    message: `Payment of ${numAmount} RWF successful via ${paymentMethod}!`,
+    transactionId: txId,
+    deposit,
+    cycle: newCycle
+  });
 });
 
 // API: Withdrawals

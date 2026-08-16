@@ -332,7 +332,7 @@ fun LoginRegisterScreen(
                                 value = referralCodeInputText,
                                 onValueChange = { referralCodeInputText = it.uppercase() },
                                 label = { Text("Referral Code (Optional)") },
-                                placeholder = { Text("e.g. BARAKA50") },
+                                placeholder = { Text("e.g. SFC50") },
                                 leadingIcon = {
                                     Icon(
                                         imageVector = Icons.Default.CardGiftcard,

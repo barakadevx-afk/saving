@@ -5,14 +5,21 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.HourglassTop
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -243,10 +250,71 @@ fun WalletWithdrawScreen(
             }
         }
 
+        // Withdrawal Status Verification Legend
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = BentoCardBg),
+                border = BorderStroke(1.dp, BentoBorder)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(
+                        text = "WITHDRAWAL STATUS VERIFICATION GUIDE",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        color = TextSecondary,
+                        letterSpacing = 0.8.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // Processing
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFF59E0B))
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Processing (1-10m)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        }
+
+                        // Completed
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(GreenSuccess)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Completed & Paid", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        }
+
+                        // Flagged
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFEF4444))
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Flagged / Review", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        }
+                    }
+                }
+            }
+        }
+
         // Withdrawal Requests History
         item {
             Text(
-                text = "Withdrawal Requests History",
+                text = "Withdrawal Requests History (${withdrawals.size})",
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 color = TextPrimary,
@@ -256,58 +324,198 @@ fun WalletWithdrawScreen(
 
         if (withdrawals.isEmpty()) {
             item {
-                Text(text = "No withdrawal requests yet.", color = TextSecondary, fontSize = 12.sp)
-            }
-        } else {
-            items(withdrawals) { wth ->
-                val dateStr = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()).format(Date(wth.requestedAt))
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(20.dp),
                     colors = CardDefaults.cardColors(containerColor = BentoCardBg),
                     border = BorderStroke(1.dp, BentoBorder)
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Column {
-                            Text(text = wth.payoutMethod, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextPrimary)
-                            Text(text = "Account: ${wth.accountNumber}", fontSize = 12.sp, color = TextSecondary)
-                            Text(text = dateStr, fontSize = 10.sp, color = TextSecondary)
+                        Text(text = "No withdrawal requests yet.", color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(text = "Payouts you request will appear here with live verification tracking.", color = TextSecondary.copy(alpha = 0.7f), fontSize = 11.sp)
+                    }
+                }
+            }
+        } else {
+            items(withdrawals) { wth ->
+                val dateStr = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()).format(Date(wth.requestedAt))
+
+                val (statusLabel, statusBg, statusText, statusBorder, statusIcon, subStatusText) = when (wth.status) {
+                    TransactionStatus.PENDING -> WithdrawalStatusTuple(
+                        label = "PROCESSING ⏳",
+                        bg = Color(0xFFFEF3C7),
+                        text = Color(0xFFB45309),
+                        border = Color(0xFFFCD34D),
+                        icon = Icons.Default.HourglassTop,
+                        subtext = "Queued for instant network disbursement"
+                    )
+                    TransactionStatus.APPROVED, TransactionStatus.COMPLETED -> WithdrawalStatusTuple(
+                        label = "COMPLETED ✅",
+                        bg = Color(0xFFD1FAE5),
+                        text = Color(0xFF065F46),
+                        border = Color(0xFF6EE7B7),
+                        icon = Icons.Default.CheckCircle,
+                        subtext = "Disbursed successfully to recipient"
+                    )
+                    TransactionStatus.REJECTED -> WithdrawalStatusTuple(
+                        label = "FLAGGED 🚩",
+                        bg = Color(0xFFFEE2E2),
+                        text = Color(0xFF991B1B),
+                        border = Color(0xFFFCA5A5),
+                        icon = Icons.Default.Flag,
+                        subtext = "Account flagged • Contact support"
+                    )
+                    TransactionStatus.LOCKED -> WithdrawalStatusTuple(
+                        label = "MATURING ⚡",
+                        bg = Color(0xFFE0E7FF),
+                        text = Color(0xFF1E3A8A),
+                        border = Color(0xFF93C5FD),
+                        icon = Icons.Default.HourglassTop,
+                        subtext = "Processing maturity"
+                    )
+                }
+
+                // Payment method badge color & icon
+                val (methodBg, methodColor, methodIcon) = when {
+                    wth.payoutMethod.contains("MTN", ignoreCase = true) -> Triple(Color(0xFFFEF08A), Color(0xFF854D0E), Icons.Default.PhoneAndroid)
+                    wth.payoutMethod.contains("Airtel", ignoreCase = true) -> Triple(Color(0xFFFEE2E2), Color(0xFF991B1B), Icons.Default.PhoneAndroid)
+                    else -> Triple(Color(0xFFE0E7FF), Color(0xFF1E3A8A), Icons.Default.AccountBalance)
+                }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(22.dp),
+                    colors = CardDefaults.cardColors(containerColor = BentoCardBg),
+                    border = BorderStroke(1.dp, BentoBorder)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(42.dp)
+                                        .clip(CircleShape)
+                                        .background(statusBg),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = statusIcon,
+                                        contentDescription = null,
+                                        tint = statusText,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                Column {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Surface(
+                                            shape = RoundedCornerShape(6.dp),
+                                            color = methodBg
+                                        ) {
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                            ) {
+                                                Icon(
+                                                    imageVector = methodIcon,
+                                                    contentDescription = null,
+                                                    tint = methodColor,
+                                                    modifier = Modifier.size(11.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(3.dp))
+                                                Text(
+                                                    text = wth.payoutMethod,
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Black,
+                                                    color = methodColor
+                                                )
+                                            }
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                    Text(
+                                        text = "To: ${wth.accountNumber}",
+                                        fontSize = 12.sp,
+                                        color = TextPrimary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = dateStr,
+                                        fontSize = 10.sp,
+                                        color = TextSecondary,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = "-%,d RWF".format(wth.amount.toInt()),
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = RedDanger,
+                                    fontSize = 15.sp
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = statusBg,
+                                    border = BorderStroke(1.dp, statusBorder)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = statusIcon,
+                                            contentDescription = null,
+                                            tint = statusText,
+                                            modifier = Modifier.size(11.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                        Text(
+                                            text = statusLabel,
+                                            fontSize = 9.5.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = statusText
+                                        )
+                                    }
+                                }
+                            }
                         }
 
-                        Column(horizontalAlignment = Alignment.End) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        HorizontalDivider(color = BentoBorder)
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             Text(
-                                text = "-%,d RWF".format(wth.amount.toInt()),
-                                fontWeight = FontWeight.Bold,
-                                color = RedDanger,
-                                fontSize = 14.sp
+                                text = "⚡ $subStatusText",
+                                fontSize = 10.sp,
+                                color = statusText,
+                                fontWeight = FontWeight.SemiBold
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = when (wth.status) {
-                                    TransactionStatus.APPROVED -> BentoEarnedBadgeBg
-                                    TransactionStatus.PENDING -> GoldLight
-                                    else -> BentoLockedBadgeBg
-                                }
-                            ) {
-                                Text(
-                                    text = wth.status.name,
-                                    fontSize = 10.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = when (wth.status) {
-                                        TransactionStatus.APPROVED -> BentoEarnedBadgeText
-                                        TransactionStatus.PENDING -> OrangeWarning
-                                        else -> BentoLockedBadgeText
-                                    },
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                                )
-                            }
+                            Text(
+                                text = "Ref: ${wth.id.take(12).uppercase()}",
+                                fontSize = 10.sp,
+                                color = TextSecondary,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
                     }
                 }
@@ -315,3 +523,12 @@ fun WalletWithdrawScreen(
         }
     }
 }
+
+private data class WithdrawalStatusTuple(
+    val label: String,
+    val bg: Color,
+    val text: Color,
+    val border: Color,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector,
+    val subtext: String
+)

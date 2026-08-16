@@ -5,11 +5,19 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.HourglassTop
+import androidx.compose.material.icons.filled.LockClock
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
@@ -70,6 +78,79 @@ fun SavingsCyclesScreen(
                     modifier = Modifier.testTag("cycles_fast_forward_btn")
                 ) {
                     Text(text = "Fast Forward ⚡", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        // Transaction & Cycle State Indicator Confidence Legend
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = BentoCardBg),
+                border = BorderStroke(1.dp, BentoBorder)
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Text(
+                        text = "CYCLE LIFECYCLE INDICATORS",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        color = TextSecondary,
+                        letterSpacing = 0.8.sp
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        // Maturing
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF3B82F6))
+                            )
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text("Maturing (72h)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        }
+
+                        // Processing
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFF59E0B))
+                            )
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text("Processing", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        }
+
+                        // Completed
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(GreenSuccess)
+                            )
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text("Completed", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        }
+
+                        // Flagged
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(10.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFEF4444))
+                            )
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text("Flagged", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                        }
+                    }
                 }
             }
         }
@@ -170,7 +251,13 @@ fun SavingsCyclesScreen(
 @Composable
 fun PastCycleCard(cycle: SavingsCycleEntity, strings: AppStrings, selectedCurrency: AppCurrency = AppCurrency.RWF) {
     val dateStr = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(Date(cycle.startDate))
-    val settledStr = if (cycle.settledAt != null) SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()).format(Date(cycle.settledAt)) else "Completed"
+    val settledStr = if (cycle.settledAt != null) SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault()).format(Date(cycle.settledAt)) else "Settled"
+
+    val (statusLabel, statusBg, statusText, statusBorder, statusIcon) = when (cycle.status) {
+        CycleStatus.COMPLETED -> StatusTuple("COMPLETED ✅", Color(0xFFD1FAE5), Color(0xFF065F46), Color(0xFF6EE7B7), Icons.Default.CheckCircle)
+        CycleStatus.AVAILABLE -> StatusTuple("SETTLED 🎁", Color(0xFFD1FAE5), Color(0xFF065F46), Color(0xFF6EE7B7), Icons.Default.CheckCircle)
+        CycleStatus.ACTIVE_LOCK -> StatusTuple("MATURING ⚡", Color(0xFFE0E7FF), Color(0xFF1E3A8A), Color(0xFF93C5FD), Icons.Default.Timer)
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -185,10 +272,30 @@ fun PastCycleCard(cycle: SavingsCycleEntity, strings: AppStrings, selectedCurren
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text(text = "Cycle ${cycle.id}", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextPrimary)
-                Text(text = "Started: $dateStr", fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
-                Text(text = "Settled: $settledStr", fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .clip(CircleShape)
+                        .background(statusBg),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = statusIcon,
+                        contentDescription = null,
+                        tint = statusText,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+                    Text(text = "Cycle #${cycle.id}", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = TextPrimary)
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(text = "Started: $dateStr", fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
+                    Text(text = "Settled: $settledStr", fontSize = 11.sp, color = TextSecondary, fontWeight = FontWeight.Medium)
+                }
             }
 
             Column(horizontalAlignment = Alignment.End) {
@@ -199,25 +306,38 @@ fun PastCycleCard(cycle: SavingsCycleEntity, strings: AppStrings, selectedCurren
                     color = TextPrimary
                 )
                 Text(
-                    text = "+${selectedCurrency.format(cycle.expectedReward)} Reward",
+                    text = "+${selectedCurrency.format(cycle.expectedReward)} Profit",
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                     color = GreenSuccess
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = BentoEarnedBadgeBg
+                    color = statusBg,
+                    border = BorderStroke(1.dp, statusBorder)
                 ) {
-                    Text(
-                        text = "COMPLETED ✅",
-                        color = BentoEarnedBadgeText,
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                    )
+                    ) {
+                        Text(
+                            text = statusLabel,
+                            color = statusText,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Black
+                        )
+                    }
                 }
             }
         }
     }
 }
+
+private data class StatusTuple(
+    val label: String,
+    val bg: Color,
+    val text: Color,
+    val border: Color,
+    val icon: androidx.compose.ui.graphics.vector.ImageVector
+)

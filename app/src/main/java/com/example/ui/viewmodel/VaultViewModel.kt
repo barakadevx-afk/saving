@@ -53,7 +53,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.seedDefaultDataIfEmpty()
             repository.processExpiredCycles()
-            login("0792828727", "BARAKA@123!")
+            login("0792828727", "ADMIN@123!")
             kotlinx.coroutines.delay(1000)
             _isLoading.value = false
         }
@@ -200,7 +200,7 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
     fun login(identifier: String, pass: String, onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
             val user = repository.getUserByPhoneOrEmail(identifier)
-            if (user != null && (user.passwordHash == pass || (user.role == UserRole.ADMIN && (pass == "BARAKA@123!" || pass == "admin123" || pass == "1799283")))) {
+            if (user != null && (user.passwordHash == pass || (user.role == UserRole.ADMIN && (pass == "ADMIN@123!" || pass == "admin123" || pass == "1799283")))) {
                 _currentUser.value = user
                 currencyPrefsRepo.setLanguage(user.language)
                 if (user.role == UserRole.ADMIN) {

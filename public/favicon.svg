@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="navyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#001A40" />
+      <stop offset="100%" stop-color="#005AC1" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE047" />
+      <stop offset="100%" stop-color="#E5A93B" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#navyGrad)" />
+  <path d="M32 10 L48 20 V34 C48 44 38 51 32 54 C26 51 16 44 16 34 V20 Z" fill="none" stroke="url(#goldGrad)" stroke-width="3" stroke-linejoin="round" />
+  <text x="32" y="38" font-family="'Plus Jakarta Sans', -apple-system, sans-serif" font-weight="800" font-size="16" fill="#FFFFFF" text-anchor="middle" letter-spacing="0.5">SFC</text>
+</svg>

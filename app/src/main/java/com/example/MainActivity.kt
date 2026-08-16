@@ -26,7 +26,7 @@ import com.example.ui.components.DepositModalDialog
 import com.example.ui.components.TopHeaderBar
 import com.example.ui.components.AnnouncementsDialog
 import com.example.ui.screens.*
-import com.example.ui.theme.BarakaVaultTheme
+import com.example.ui.theme.SmartFutureTheme
 import com.example.ui.theme.NavyDark
 import com.example.ui.theme.GoldAccent
 import com.example.ui.viewmodel.NavigationTab
@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
             val viewModel: VaultViewModel = viewModel()
             val isDarkMode by viewModel.isDarkMode.collectAsStateWithLifecycle()
 
-            BarakaVaultTheme(darkTheme = isDarkMode) {
+            SmartFutureTheme(darkTheme = isDarkMode) {
                 // Request Notification Permission on Android 13+
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                     val permissionLauncher = androidx.activity.compose.rememberLauncherForActivityResult(
@@ -56,14 +56,14 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                BarakaVaultApp(viewModel = viewModel)
+                SmartFutureApp(viewModel = viewModel)
             }
         }
     }
 }
 
 @Composable
-fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
+fun SmartFutureApp(viewModel: VaultViewModel = viewModel()) {
     val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
     val currentWallet by viewModel.currentWallet.collectAsStateWithLifecycle()
     val userCycles by viewModel.userCycles.collectAsStateWithLifecycle()
@@ -112,7 +112,7 @@ fun BarakaVaultApp(viewModel: VaultViewModel = viewModel()) {
                 viewModel.register(phone, fullName, pass, refCode)
             },
             onDemoLoginUser = { viewModel.login("0788123456", "user123") },
-            onDemoLoginAdmin = { viewModel.login("0792828727", "BARAKA@123!") }
+            onDemoLoginAdmin = { viewModel.login("0792828727", "ADMIN@123!") }
         )
     } else {
         ModalNavigationDrawer(

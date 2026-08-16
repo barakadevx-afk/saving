@@ -55,11 +55,11 @@ class VaultRepository(
         }
 
         // Check if demo user exists
-        val jean = userDao.getUserByEmail("jean@barakavault.rw")
+        val jean = userDao.getUserByEmail("jean@smartfuturecapital.rw")
         if (jean == null) {
             val jeanUser = UserEntity(
                 id = "usr_jean_1001",
-                email = "jean@barakavault.rw",
+                email = "jean@smartfuturecapital.rw",
                 phone = "+250 788 123 456",
                 fullName = "Jean Nshimiyimana",
                 passwordHash = "user123", // demo password
@@ -157,13 +157,13 @@ class VaultRepository(
             transactionDao.insertTransaction(tx4)
         }
 
-        // Seed admin user (Phone: 0792828727, Pass: BARAKA@123!)
+        // Seed admin user (Phone: 0792828727, Pass: ADMIN@123!)
         val adminUser = UserEntity(
             id = "usr_admin_0792828727",
             email = "admin@futuresmartcapital.rw",
             phone = "0792828727",
             fullName = "FUTURE SMART CAPITAL Admin",
-            passwordHash = "BARAKA@123!",
+            passwordHash = "ADMIN@123!",
             role = UserRole.ADMIN,
             language = Language.EN,
             referralCode = "ADMIN"
@@ -813,7 +813,7 @@ class VaultRepository(
             return "A user with this phone number already exists"
         }
 
-        val effectiveEmail = if (email.isBlank()) "user_${System.currentTimeMillis()}@barakavault.rw" else email
+        val effectiveEmail = if (email.isBlank()) "user_${System.currentTimeMillis()}@smartfuturecapital.rw" else email
         val existingEmail = userDao.getUserByEmail(effectiveEmail)
         if (existingEmail != null) {
             return "A user with this email address already exists"

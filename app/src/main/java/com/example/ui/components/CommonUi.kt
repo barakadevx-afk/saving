@@ -1071,6 +1071,9 @@ fun ActiveCycleProgressCard(
         }
     }
 
+    val isMaturing = currentTime < cycle.endDate
+    val isReadyToSettle = !isMaturing
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -1090,26 +1093,38 @@ fun ActiveCycleProgressCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.padding(22.dp)) {
+            // Top Status Bar with Color-Coded Pill & Visual State Icon
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
-                    Text(
-                        text = "ACTIVE SAVINGS VAULT",
-                        color = BentoDarkCardText.copy(alpha = 0.6f),
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.sp
-                    )
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text(
-                        text = "$depositFormatted Principal Deposit",
-                        color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Surface(
+                        shape = RoundedCornerShape(20.dp),
+                        color = if (isMaturing) Color(0xFF1E3A8A).copy(alpha = 0.6f) else BentoEarnedBadgeBg,
+                        border = BorderStroke(1.dp, if (isMaturing) Color(0xFF60A5FA) else GreenSuccess)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (isMaturing) Icons.Default.HourglassTop else Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = if (isMaturing) Color(0xFF93C5FD) else BentoEarnedBadgeText,
+                                modifier = Modifier.size(13.dp)
+                            )
+                            Spacer(modifier = Modifier.width(5.dp))
+                            Text(
+                                text = if (isMaturing) "MATURING ⚡ (72H LOCK)" else "COMPLETED & READY 🎉",
+                                color = if (isMaturing) Color(0xFFE0E7FF) else BentoEarnedBadgeText,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                letterSpacing = 0.5.sp
+                            )
+                        }
+                    }
                 }
 
                 Button(
@@ -1121,6 +1136,25 @@ fun ActiveCycleProgressCard(
                 ) {
                     Text(text = "Fast Forward ⚡", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Column {
+                Text(
+                    text = "ACTIVE SAVINGS VAULT",
+                    color = BentoDarkCardText.copy(alpha = 0.6f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = "$depositFormatted Principal Deposit",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
 
             Spacer(modifier = Modifier.height(14.dp))
@@ -1141,6 +1175,87 @@ fun ActiveCycleProgressCard(
             )
 
             Spacer(modifier = Modifier.height(16.dp))
+
+            // 3-Step Lifecycle Visual Step Tracker (Improves user confidence)
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = Color.White.copy(alpha = 0.05f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.1f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Step 1: Deposited
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(CircleShape)
+                                .background(GreenSuccess),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.Check, contentDescription = null, tint = NavyDark, modifier = Modifier.size(12.dp))
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("1. Deposited", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    }
+
+                    Text("→", fontSize = 12.sp, color = Color.White.copy(alpha = 0.4f), fontWeight = FontWeight.Bold)
+
+                    // Step 2: Maturing
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(CircleShape)
+                                .background(if (isMaturing) GoldAccent else GreenSuccess),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (isMaturing) {
+                                Icon(Icons.Default.HourglassBottom, contentDescription = null, tint = NavyDark, modifier = Modifier.size(12.dp))
+                            } else {
+                                Icon(Icons.Default.Check, contentDescription = null, tint = NavyDark, modifier = Modifier.size(12.dp))
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isMaturing) "2. Maturing (72h)" else "2. Matured",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isMaturing) GoldAccent else Color.White
+                        )
+                    }
+
+                    Text("→", fontSize = 12.sp, color = Color.White.copy(alpha = 0.4f), fontWeight = FontWeight.Bold)
+
+                    // Step 3: Payout
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(20.dp)
+                                .clip(CircleShape)
+                                .background(if (isReadyToSettle) GreenSuccess else Color.White.copy(alpha = 0.2f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(Icons.Default.AutoAwesome, contentDescription = null, tint = if (isReadyToSettle) NavyDark else Color.White.copy(alpha = 0.6f), modifier = Modifier.size(12.dp))
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "3. 50% Profit",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isReadyToSettle) GreenSuccess else Color.White.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
             HorizontalDivider(color = Color.White.copy(alpha = 0.1f))
             Spacer(modifier = Modifier.height(14.dp))
 
@@ -1675,7 +1790,7 @@ fun DepositModalDialog(
                                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                         Text(text = "1. Dial: *182*8*1*1799283# on MTN", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
                                         Text(text = "2. Enter Deposit Amount: %,d RWF".format(amount.toInt()), fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = BentoPrimaryBlue)
-                                        Text(text = "3. Confirm recipient name: SMART FUTURE CAPITAL / BARAKA", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
+                                        Text(text = "3. Confirm recipient name: SMART FUTURE CAPITAL", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
                                         Text(text = "4. Enter your MoMo PIN to approve payment", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
                                         Text(text = "5. Copy Transaction ID from SMS receipt and paste below", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface)
                                     }
@@ -1889,6 +2004,14 @@ fun TransparencyNoticeBanner(
     }
 }
 
+data class StatusPillConfig(
+    val label: String,
+    val bg: Color,
+    val text: Color,
+    val border: Color,
+    val icon: ImageVector
+)
+
 @Composable
 fun TransactionItemRow(tx: TransactionEntity) {
     val dateStr = SimpleDateFormat("MMM dd, yyyy · HH:mm", Locale.getDefault()).format(Date(tx.timestamp))
@@ -1923,13 +2046,13 @@ fun TransactionItemRow(tx: TransactionEntity) {
         }
     }
 
-    // Status Pill Text and Style
-    val (statusText, statusPillBg, statusPillText) = when (tx.status) {
-        TransactionStatus.LOCKED -> Triple("🔒 3-DAY LOCK", BentoHeroCardBg, BentoHeroText)
-        TransactionStatus.PENDING -> Triple("⏳ PENDING", GoldLight, OrangeWarning)
-        TransactionStatus.COMPLETED -> Triple("✅ COMPLETED", BentoEarnedBadgeBg, BentoEarnedBadgeText)
-        TransactionStatus.APPROVED -> Triple("✅ APPROVED", BentoEarnedBadgeBg, BentoEarnedBadgeText)
-        TransactionStatus.REJECTED -> Triple("❌ REJECTED", BentoLockedBadgeBg, BentoLockedBadgeText)
+    // Status Pill Config
+    val statusPill = when (tx.status) {
+        TransactionStatus.LOCKED -> StatusPillConfig("MATURING ⚡", Color(0xFFE0E7FF), Color(0xFF1E3A8A), Color(0xFF93C5FD), Icons.Default.Timer)
+        TransactionStatus.PENDING -> StatusPillConfig("PROCESSING ⏳", Color(0xFFFEF3C7), Color(0xFFB45309), Color(0xFFFCD34D), Icons.Default.HourglassTop)
+        TransactionStatus.COMPLETED -> StatusPillConfig("COMPLETED ✅", Color(0xFFD1FAE5), Color(0xFF065F46), Color(0xFF6EE7B7), Icons.Default.CheckCircle)
+        TransactionStatus.APPROVED -> StatusPillConfig("COMPLETED ✅", Color(0xFFD1FAE5), Color(0xFF065F46), Color(0xFF6EE7B7), Icons.Default.CheckCircle)
+        TransactionStatus.REJECTED -> StatusPillConfig("FLAGGED 🚩", Color(0xFFFEE2E2), Color(0xFF991B1B), Color(0xFFFCA5A5), Icons.Default.Flag)
     }
 
     Card(
@@ -1996,15 +2119,27 @@ fun TransactionItemRow(tx: TransactionEntity) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Surface(
                         shape = RoundedCornerShape(10.dp),
-                        color = statusPillBg
+                        color = statusPill.bg,
+                        border = BorderStroke(1.dp, statusPill.border)
                     ) {
-                        Text(
-                            text = statusText,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = statusPillText,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                        ) {
+                            Icon(
+                                imageVector = statusPill.icon,
+                                contentDescription = null,
+                                tint = statusPill.text,
+                                modifier = Modifier.size(11.dp)
+                            )
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text(
+                                text = statusPill.label,
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Black,
+                                color = statusPill.text
+                            )
+                        }
                     }
                 }
             }

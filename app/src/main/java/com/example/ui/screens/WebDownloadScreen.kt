@@ -192,7 +192,7 @@ fun WebDownloadScreen(
                             IconButton(
                                 onClick = {
                                     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                    val clip = ClipData.newPlainText("Baraka Vault Web URL", webAppUrl)
+                                    val clip = ClipData.newPlainText("Smart Future Capital Web URL", webAppUrl)
                                     clipboard.setPrimaryClip(clip)
                                     onShowMessage("Web Portal link copied to clipboard! 📋")
                                 },
