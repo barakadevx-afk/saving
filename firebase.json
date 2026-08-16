@@ -1,10 +1,22 @@
 {
   "hosting": {
-    "public": "public",
+    "public": ".",
     "ignore": [
       "firebase.json",
+      ".firebaserc",
       "**/.*",
-      "**/node_modules/**"
+      "**/node_modules/**",
+      ".git/**",
+      ".vercel/**",
+      ".firebase/**",
+      "api/**",
+      "app/**",
+      "gradle/**",
+      "assets/**",
+      "public/**",
+      "*.json",
+      "*.kts",
+      "server.js"
     ],
     "rewrites": [
       {
