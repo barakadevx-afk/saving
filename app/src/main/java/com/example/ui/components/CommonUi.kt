@@ -1671,18 +1671,26 @@ fun DepositModalDialog(
                     }
 
                     if (activeDepositTab == 0) {
-                        // QR Code View
+                        // Dynamically Generated USSD QR Code View
                         item {
+                            var includeAmountInQr by remember { mutableStateOf(false) }
+                            val baseUssdCode = "*182*8*1*1799283#"
+                            val dynamicUssdCode = if (includeAmountInQr) "*182*8*1*1799283*${amount.toInt()}#" else baseUssdCode
+                            val ussdUriString = "tel:${dynamicUssdCode.replace("#", "%23")}"
+                            val qrApiUrl = "https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=" +
+                                    java.net.URLEncoder.encode(dynamicUssdCode, "UTF-8") +
+                                    "&color=001A40&bgcolor=FFFFFF&margin=6"
+
                             Surface(
-                                shape = RoundedCornerShape(16.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                                border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.4f)),
+                                shape = RoundedCornerShape(18.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                                border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.5f)),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(14.dp),
+                                        .padding(16.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Surface(
@@ -1690,7 +1698,7 @@ fun DepositModalDialog(
                                         color = GoldAccent
                                     ) {
                                         Text(
-                                            text = "MTN MOMO OFFICIAL MERCHANT QR",
+                                            text = "DYNAMIC MTN MOMO USSD QR CODE",
                                             fontSize = 10.sp,
                                             fontWeight = FontWeight.Black,
                                             color = NavyDark,
@@ -1700,41 +1708,101 @@ fun DepositModalDialog(
 
                                     Spacer(modifier = Modifier.height(10.dp))
 
-                                    // QR Code Image Container
-                                    Surface(
-                                        shape = RoundedCornerShape(14.dp),
-                                        color = Color.White,
-                                        border = BorderStroke(2.dp, GoldAccent),
-                                        shadowElevation = 2.dp,
-                                        modifier = Modifier.size(180.dp)
+                                    // Dynamic Amount Toggle in QR
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Box(
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentAlignment = Alignment.Center
+                                        Surface(
+                                            shape = RoundedCornerShape(20.dp),
+                                            color = if (!includeAmountInQr) NavyDark else MaterialTheme.colorScheme.surface,
+                                            border = BorderStroke(1.dp, if (!includeAmountInQr) NavyDark else BentoBorder),
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(20.dp))
+                                                .clickable { includeAmountInQr = false }
                                         ) {
-                                            AsyncImage(
-                                                model = "https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=*182*8*1*1799283%23&color=001A40",
-                                                contentDescription = "MTN Merchant Payment QR Code",
-                                                modifier = Modifier
-                                                    .size(160.dp)
-                                                    .padding(6.dp)
+                                            Text(
+                                                text = "Standard Code (*182#)",
+                                                fontSize = 10.5.sp,
+                                                fontWeight = if (!includeAmountInQr) FontWeight.Bold else FontWeight.Medium,
+                                                color = if (!includeAmountInQr) GoldAccent else TextSecondary,
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.width(6.dp))
+
+                                        Surface(
+                                            shape = RoundedCornerShape(20.dp),
+                                            color = if (includeAmountInQr) NavyDark else MaterialTheme.colorScheme.surface,
+                                            border = BorderStroke(1.dp, if (includeAmountInQr) NavyDark else BentoBorder),
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(20.dp))
+                                                .clickable { includeAmountInQr = true }
+                                        ) {
+                                            Text(
+                                                text = "Pre-fill %,d RWF".format(amount.toInt()),
+                                                fontSize = 10.5.sp,
+                                                fontWeight = if (includeAmountInQr) FontWeight.Bold else FontWeight.Medium,
+                                                color = if (includeAmountInQr) GoldAccent else TextSecondary,
+                                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                                             )
                                         }
                                     }
 
+                                    Spacer(modifier = Modifier.height(12.dp))
+
+                                    // QR Code Viewfinder Container
+                                    Box(
+                                        modifier = Modifier
+                                            .size(200.dp)
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .background(Color.White)
+                                            .border(2.dp, GoldAccent, RoundedCornerShape(16.dp))
+                                            .padding(8.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        AsyncImage(
+                                            model = qrApiUrl,
+                                            contentDescription = "Dynamic MTN MoMo USSD QR Code",
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .testTag("momo_ussd_qr_image")
+                                        )
+                                    }
+
                                     Spacer(modifier = Modifier.height(10.dp))
 
+                                    Surface(
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = BlueLight,
+                                        border = BorderStroke(1.dp, BluePrimary.copy(alpha = 0.3f))
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                        ) {
+                                            Text(text = "📲", fontSize = 12.sp)
+                                            Text(
+                                                text = "Encoded USSD: $dynamicUssdCode",
+                                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                                fontSize = 11.5.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = BluePrimary
+                                            )
+                                        }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(6.dp))
+
                                     Text(
-                                        text = "Smart Future Capital (SFC)",
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                    Text(
-                                        text = "Merchant Code: 1799283  •  Alt: 1799273",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = GoldDark
+                                        text = "Scan with your phone camera, MoMo App, or Banking App (BK, Equity, I&M) to initiate USSD payment instantly.",
+                                        fontSize = 10.5.sp,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                        lineHeight = 14.sp
                                     )
 
                                     Spacer(modifier = Modifier.height(10.dp))
@@ -1744,26 +1812,26 @@ fun DepositModalDialog(
                                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
                                         OutlinedButton(
-                                            onClick = { copyToClipboard(context, "Merchant Code", "1799283") },
+                                            onClick = { copyToClipboard(context, "USSD String", dynamicUssdCode) },
                                             modifier = Modifier.weight(1f),
-                                            shape = RoundedCornerShape(8.dp),
+                                            shape = RoundedCornerShape(10.dp),
                                             contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
                                         ) {
                                             Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Copy Code", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                            Text("Copy USSD", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
                                         }
 
                                         Button(
-                                            onClick = { launchUssdDialIntent(context, "*182*8*1*1799283#") },
+                                            onClick = { launchUssdDialIntent(context, dynamicUssdCode) },
                                             modifier = Modifier.weight(1f),
                                             colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = NavyDark),
-                                            shape = RoundedCornerShape(8.dp),
+                                            shape = RoundedCornerShape(10.dp),
                                             contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
                                         ) {
                                             Icon(Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(14.dp))
                                             Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Dial USSD", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                            Text("Tap to Dial", fontSize = 10.5.sp, fontWeight = FontWeight.Bold)
                                         }
                                     }
                                 }

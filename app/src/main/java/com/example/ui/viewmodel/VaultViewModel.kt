@@ -448,4 +448,28 @@ class VaultViewModel(application: Application) : AndroidViewModel(application) {
             showMessage("System Capital Reserve updated to ${newReserveAmount} RWF 💰")
         }
     }
+
+    fun updateTransactionStatus(txId: String, newStatus: TransactionStatus) {
+        val admin = _currentUser.value ?: return
+        viewModelScope.launch {
+            repository.updateTransactionStatus(txId, newStatus, admin.id)
+            showMessage("Tx ${txId.take(8)} status marked as ${newStatus.name} ⚖️")
+        }
+    }
+
+    fun toggleDepositStatus(requestId: String, newStatus: TransactionStatus) {
+        val admin = _currentUser.value ?: return
+        viewModelScope.launch {
+            repository.updateDepositStatusManually(requestId, newStatus, admin.id)
+            showMessage("Deposit ${requestId.take(8)} marked as ${newStatus.name} 🔄")
+        }
+    }
+
+    fun toggleWithdrawalStatus(withdrawalId: String, newStatus: TransactionStatus) {
+        val admin = _currentUser.value ?: return
+        viewModelScope.launch {
+            repository.updateWithdrawalStatusManually(withdrawalId, newStatus, admin.id)
+            showMessage("Withdrawal ${withdrawalId.take(8)} marked as ${newStatus.name} 🔄")
+        }
+    }
 }

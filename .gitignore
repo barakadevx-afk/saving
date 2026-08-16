@@ -15,10 +15,4 @@
 .cxx
 local.properties
 .env
-.env.local
 debug.keystore
-node_modules/
-.vercel/
-.firebase/
-firebase-debug.log
-firebase-debug.*.log

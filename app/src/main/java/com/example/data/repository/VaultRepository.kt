@@ -940,4 +940,42 @@ class VaultRepository(
             )
         )
     }
+
+    // Admin Transaction Audit: Manual Status Toggle
+    suspend fun updateTransactionStatus(txId: String, newStatus: TransactionStatus, adminId: String) {
+        val tx = transactionDao.getTransactionById(txId)
+        val oldStatus = tx?.status?.name ?: "UNKNOWN"
+        transactionDao.updateTransactionStatus(txId, newStatus)
+        adminDao.insertAdminLog(
+            AdminLogEntity(
+                adminId = adminId,
+                action = "TX_STATUS_OVERRIDE",
+                details = "Updated Tx $txId status from $oldStatus to ${newStatus.name}"
+            )
+        )
+    }
+
+    suspend fun updateDepositStatusManually(requestId: String, newStatus: TransactionStatus, adminId: String) {
+        val now = System.currentTimeMillis()
+        depositRequestDao.updateDepositRequestStatus(requestId, newStatus, now, "Status manually updated to ${newStatus.name} by Admin $adminId")
+        adminDao.insertAdminLog(
+            AdminLogEntity(
+                adminId = adminId,
+                action = "DEPOSIT_STATUS_OVERRIDE",
+                details = "Deposit request $requestId status manually changed to ${newStatus.name}"
+            )
+        )
+    }
+
+    suspend fun updateWithdrawalStatusManually(withdrawalId: String, newStatus: TransactionStatus, adminId: String) {
+        val now = System.currentTimeMillis()
+        withdrawalDao.updateWithdrawalStatus(withdrawalId, newStatus, now)
+        adminDao.insertAdminLog(
+            AdminLogEntity(
+                adminId = adminId,
+                action = "WITHDRAWAL_STATUS_OVERRIDE",
+                details = "Withdrawal request $withdrawalId status manually changed to ${newStatus.name}"
+            )
+        )
+    }
 }

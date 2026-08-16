@@ -97,8 +97,14 @@ interface TransactionDao {
     @Query("SELECT * FROM transactions WHERE userId = :userId ORDER BY timestamp DESC")
     fun getTransactionsByUserId(userId: String): Flow<List<TransactionEntity>>
 
-    @Query("SELECT * FROM transactions ORDER BY timestamp DESC LIMIT 50")
+    @Query("SELECT * FROM transactions ORDER BY timestamp DESC")
     fun getAllTransactions(): Flow<List<TransactionEntity>>
+
+    @Query("SELECT * FROM transactions WHERE id = :id LIMIT 1")
+    suspend fun getTransactionById(id: String): TransactionEntity?
+
+    @Query("UPDATE transactions SET status = :status WHERE id = :id")
+    suspend fun updateTransactionStatus(id: String, status: TransactionStatus)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTransaction(tx: TransactionEntity)

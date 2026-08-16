@@ -1,31 +1,50 @@
 package com.example.ui.screens
 
+import android.content.ContentValues
+import android.content.Context
+import android.content.Intent
+import android.os.Build
+import android.os.Environment
+import android.provider.MediaStore
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Flag
 import androidx.compose.material.icons.filled.HourglassTop
 import androidx.compose.material.icons.filled.PhoneAndroid
+import androidx.compose.material.icons.filled.ReceiptLong
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.example.data.i18n.AppStrings
 import com.example.data.model.AppCurrency
 import com.example.data.model.TransactionStatus
@@ -33,6 +52,7 @@ import com.example.data.model.WalletEntity
 import com.example.data.model.WithdrawalEntity
 import com.example.ui.components.TransparencyNoticeBanner
 import com.example.ui.theme.*
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -46,6 +66,9 @@ fun WalletWithdrawScreen(
     selectedCurrency: AppCurrency = AppCurrency.RWF,
     onRequestWithdrawal: (amount: Double, method: String, accountNum: String) -> Unit
 ) {
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+
     val available = wallet?.availableBalance ?: 0.0
     val locked = wallet?.lockedBalance ?: 0.0
 
@@ -54,8 +77,107 @@ fun WalletWithdrawScreen(
     var accountNumberText by remember { mutableStateOf("+250 788 123 456") }
     var methodExpanded by remember { mutableStateOf(false) }
 
+    var viewingReceiptForWithdrawal by remember { mutableStateOf<WithdrawalEntity?>(null) }
+
+    val isCrypto = selectedMethod.contains("USDT")
+    val isTrc20 = selectedMethod.contains("TRC20")
+    val isBep20 = selectedMethod.contains("BEP20")
+
     val amountVal = withdrawAmountText.toDoubleOrNull() ?: 0.0
+    val estimatedUsdt = if (amountVal > 0) amountVal / 1450.0 else 0.0
     val isValid = amountVal > 0 && amountVal <= available && accountNumberText.isNotBlank()
+
+    // Receipt Dialog Preview
+    if (viewingReceiptForWithdrawal != null) {
+        val wth = viewingReceiptForWithdrawal!!
+        val receiptSummaryText = generateWithdrawalReceiptText(wth)
+
+        Dialog(onDismissRequest = { viewingReceiptForWithdrawal = null }) {
+            Card(
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = LightSurface),
+                modifier = Modifier.fillMaxWidth().testTag("receipt_preview_dialog")
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(20.dp)
+                        .fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Icon(Icons.Default.ReceiptLong, contentDescription = null, tint = BentoPrimaryBlue)
+                            Text("Withdrawal Receipt 📄", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextPrimary)
+                        }
+                        IconButton(onClick = { viewingReceiptForWithdrawal = null }) {
+                            Icon(Icons.Default.Close, contentDescription = "Close")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFF0F172A),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 280.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .padding(12.dp)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            Text(
+                                text = receiptSummaryText,
+                                fontFamily = FontFamily.Monospace,
+                                fontSize = 10.sp,
+                                color = Color(0xFF38BDF8),
+                                lineHeight = 14.sp
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                clipboardManager.setText(AnnotatedString(receiptSummaryText))
+                                Toast.makeText(context, "Receipt text copied to clipboard! 📋", Toast.LENGTH_SHORT).show()
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.weight(1f).testTag("copy_receipt_btn")
+                        ) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(14.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Copy", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = {
+                                downloadOrShareWithdrawalReceipt(context, wth)
+                                viewingReceiptForWithdrawal = null
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = BentoPrimaryBlue),
+                            modifier = Modifier.weight(1.5f).testTag("download_receipt_action_btn")
+                        ) {
+                            Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Download / Save", fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -194,23 +316,69 @@ fun WalletWithdrawScreen(
                             modifier = Modifier.background(BentoCardBg)
                         ) {
                             DropdownMenuItem(
-                                text = { Text("MTN Mobile Money", color = TextPrimary) },
+                                text = { Text("📱 MTN Mobile Money", color = TextPrimary, fontWeight = FontWeight.Bold) },
                                 onClick = {
                                     selectedMethod = "MTN Mobile Money"
+                                    if (accountNumberText.startsWith("0x") || accountNumberText.startsWith("T")) {
+                                        accountNumberText = "+250 788 123 456"
+                                    }
                                     methodExpanded = false
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Airtel Money", color = TextPrimary) },
+                                text = { Text("📱 Airtel Money", color = TextPrimary, fontWeight = FontWeight.Bold) },
                                 onClick = {
                                     selectedMethod = "Airtel Money"
+                                    if (accountNumberText.startsWith("0x") || accountNumberText.startsWith("T")) {
+                                        accountNumberText = "+250 733 123 456"
+                                    }
                                     methodExpanded = false
                                 }
                             )
                             DropdownMenuItem(
-                                text = { Text("Bank Account (BK / I&M)", color = TextPrimary) },
+                                text = { Text("🏦 Bank Account (BK / I&M / Equity)", color = TextPrimary, fontWeight = FontWeight.Bold) },
                                 onClick = {
                                     selectedMethod = "Bank Account"
+                                    if (accountNumberText.startsWith("0x") || accountNumberText.startsWith("T")) {
+                                        accountNumberText = "00044-012345678-90"
+                                    }
+                                    methodExpanded = false
+                                }
+                            )
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = BentoBorder)
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text("🪙 Crypto USDT (TRC20)", color = TextPrimary, fontWeight = FontWeight.Bold)
+                                        Surface(
+                                            color = Color(0xFF10B981).copy(alpha = 0.15f),
+                                            shape = RoundedCornerShape(4.dp)
+                                        ) {
+                                            Text("TRON", fontSize = 9.sp, fontWeight = FontWeight.Black, color = Color(0xFF059669), modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    selectedMethod = "Crypto USDT (TRC20)"
+                                    accountNumberText = "TR7NHkorK8y62zMpWC2AbWGE8326xTRON"
+                                    methodExpanded = false
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = {
+                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text("🪙 Crypto USDT (BEP20)", color = TextPrimary, fontWeight = FontWeight.Bold)
+                                        Surface(
+                                            color = Color(0xFFF59E0B).copy(alpha = 0.15f),
+                                            shape = RoundedCornerShape(4.dp)
+                                        ) {
+                                            Text("BSC", fontSize = 9.sp, fontWeight = FontWeight.Black, color = Color(0xFFD97706), modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp))
+                                        }
+                                    }
+                                },
+                                onClick = {
+                                    selectedMethod = "Crypto USDT (BEP20)"
+                                    accountNumberText = "0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c"
                                     methodExpanded = false
                                 }
                             )
@@ -222,13 +390,85 @@ fun WalletWithdrawScreen(
                     OutlinedTextField(
                         value = accountNumberText,
                         onValueChange = { accountNumberText = it },
-                        label = { Text("Account / Phone Number") },
+                        label = {
+                            Text(
+                                when {
+                                    isTrc20 -> "USDT TRC20 Wallet Address (TRON)"
+                                    isBep20 -> "USDT BEP20 Wallet Address (BNB Chain)"
+                                    selectedMethod == "Bank Account" -> "Bank Account & Routing (BK / I&M)"
+                                    else -> "MoMo Phone Number"
+                                }
+                            )
+                        },
+                        placeholder = {
+                            Text(
+                                when {
+                                    isTrc20 -> "Starts with T (e.g. TR7NH...)"
+                                    isBep20 -> "Starts with 0x (e.g. 0x7130...)"
+                                    selectedMethod == "Bank Account" -> "Account number & bank name"
+                                    else -> "+250 788..."
+                                }
+                            )
+                        },
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("payout_account_input"),
                         singleLine = true
                     )
+
+                    if (isCrypto) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = if (isTrc20) Color(0xFFECFDF5) else Color(0xFFFFFBEB),
+                            border = BorderStroke(1.dp, if (isTrc20) Color(0xFFA7F3D0) else Color(0xFFFDE68A)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = if (isTrc20) "🪙 TRON TRC-20 Network" else "🪙 BNB Smart Chain (BEP-20)",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (isTrc20) Color(0xFF065F46) else Color(0xFF92400E)
+                                    )
+                                    Text(
+                                        text = "⚡ 0 Gas Fee (Treasury Sponsored)",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = GreenSuccess
+                                    )
+                                }
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Estimated Payout:",
+                                        fontSize = 11.sp,
+                                        color = TextSecondary
+                                    )
+                                    Text(
+                                        text = "≈ %.2f USDT".format(estimatedUsdt),
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = TextPrimary
+                                    )
+                                }
+                                Text(
+                                    text = "Rate: 1 USD ≈ 1,450 RWF • Instant on-chain settlement upon admin dispatch.",
+                                    fontSize = 9.5.sp,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                    }
 
                     Spacer(modifier = Modifier.height(18.dp))
 
@@ -244,7 +484,10 @@ fun WalletWithdrawScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = BentoPrimaryBlue),
                         shape = RoundedCornerShape(14.dp)
                     ) {
-                        Text(text = "Submit Withdrawal Request ⬆️", fontWeight = FontWeight.Bold)
+                        Text(
+                            text = if (isCrypto) "Submit USDT Withdrawal Request 🪙" else "Submit Withdrawal Request ⬆️",
+                            fontWeight = FontWeight.Bold
+                        )
                     }
                 }
             }
@@ -508,7 +751,8 @@ fun WalletWithdrawScreen(
                                 text = "⚡ $subStatusText",
                                 fontSize = 10.sp,
                                 color = statusText,
-                                fontWeight = FontWeight.SemiBold
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.weight(1f)
                             )
                             Text(
                                 text = "Ref: ${wth.id.take(12).uppercase()}",
@@ -517,10 +761,138 @@ fun WalletWithdrawScreen(
                                 fontWeight = FontWeight.Bold
                             )
                         }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Receipt Action Button
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedButton(
+                                onClick = { viewingReceiptForWithdrawal = wth },
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, BentoPrimaryBlue.copy(alpha = 0.4f)),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = BentoPrimaryBlue
+                                ),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                modifier = Modifier.testTag("download_receipt_btn_${wth.id}")
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ReceiptLong,
+                                    contentDescription = "Download Receipt",
+                                    modifier = Modifier.size(13.dp),
+                                    tint = BentoPrimaryBlue
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Download Receipt 📄",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+fun generateWithdrawalReceiptText(wth: WithdrawalEntity): String {
+    val dateStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(wth.requestedAt))
+    val processedDateStr = if (wth.processedAt != null) {
+        SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(wth.processedAt))
+    } else "PENDING DISBURSEMENT"
+
+    val statusDescription = when (wth.status) {
+        TransactionStatus.COMPLETED, TransactionStatus.APPROVED -> "COMPLETED & DISBURSED"
+        TransactionStatus.PENDING -> "PROCESSING / QUEUED"
+        TransactionStatus.REJECTED -> "FLAGGED / UNDER REVIEW"
+        TransactionStatus.LOCKED -> "MATURING"
+    }
+
+    val isCrypto = wth.payoutMethod.contains("USDT", ignoreCase = true)
+    val estimatedUsdt = wth.amount / 1450.0
+
+    val formattedGross = "%,d RWF".format(wth.amount.toInt())
+    val formattedNet = "%,d RWF".format(wth.amount.toInt())
+    val cryptoDetails = if (isCrypto) {
+        "Crypto Equivalent (Est): ~ %.2f USDT (1 USD ≈ 1,450 RWF)\nNetwork Gas Fee (USDT): 0 USDT (Treasury Sponsored)\n".format(estimatedUsdt)
+    } else ""
+
+    return """
+============================================================
+              FUTURE SMART CAPITAL
+          OFFICIAL WITHDRAWAL PROOF OF RECEIPT
+============================================================
+Transaction Reference : ${wth.id}
+Request Timestamp     : $dateStr
+Disbursement Status   : $statusDescription (${wth.status.name})
+Processed Timestamp   : $processedDateStr
+
+------------------- PAYMENT BREAKDOWN ----------------------
+Payout Destination    : ${wth.payoutMethod}
+${if (isCrypto) "Recipient Wallet Addr : ${wth.accountNumber}" else "Recipient Account     : ${wth.accountNumber}"}
+Gross Withdrawal (RWF): $formattedGross
+${cryptoDetails}Processing & MoMo Fee : 0 RWF (FREE)
+Net Disbursed Amount  : $formattedNet
+
+------------------ SECURITY & LIQUIDITY --------------------
+Liquidity Reserve     : Backed by 20,000,000 RWF Capital Fund
+Platform Merchant Code: 1799283
+Helpline / WhatsApp   : +250 792 828 727
+Support Email         : support@futuresmartcapital.rw
+
+============================================================
+This receipt serves as official proof of payout transaction
+from FUTURE SMART CAPITAL. Keep this record for your audit.
+============================================================
+""".trimIndent()
+}
+
+fun downloadOrShareWithdrawalReceipt(context: Context, wth: WithdrawalEntity) {
+    val receiptText = generateWithdrawalReceiptText(wth)
+    val fileName = "SFC_Withdrawal_Receipt_${wth.id.take(8)}.txt"
+
+    try {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val contentValues = ContentValues().apply {
+                put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(MediaStore.MediaColumns.MIME_TYPE, "text/plain")
+                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            }
+            val resolver = context.contentResolver
+            val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
+            if (uri != null) {
+                resolver.openOutputStream(uri)?.use { outputStream ->
+                    outputStream.write(receiptText.toByteArray())
+                }
+            }
+        } else {
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            downloadsDir.mkdirs()
+            val file = File(downloadsDir, fileName)
+            file.writeText(receiptText)
+        }
+
+        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "SFC Withdrawal Receipt #${wth.id.take(8)}")
+            putExtra(Intent.EXTRA_TEXT, receiptText)
+        }
+        context.startActivity(Intent.createChooser(sendIntent, "Download / Share Withdrawal Receipt"))
+        Toast.makeText(context, "Receipt saved to Downloads & ready to share! 📄", Toast.LENGTH_LONG).show()
+    } catch (e: Exception) {
+        val sendIntent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "SFC Withdrawal Receipt #${wth.id.take(8)}")
+            putExtra(Intent.EXTRA_TEXT, receiptText)
+        }
+        context.startActivity(Intent.createChooser(sendIntent, "SFC Withdrawal Receipt"))
+        Toast.makeText(context, "Receipt ready! 📄", Toast.LENGTH_SHORT).show()
     }
 }
 

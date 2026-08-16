@@ -521,6 +521,15 @@ fun SmartFutureApp(viewModel: VaultViewModel = viewModel()) {
                                 },
                                 onUpdateAdminReserveFund = { amount ->
                                     viewModel.updateAdminReserveFund(amount)
+                                },
+                                onUpdateTransactionStatus = { txId, status ->
+                                    viewModel.updateTransactionStatus(txId, status)
+                                },
+                                onToggleDepositStatus = { depId, status ->
+                                    viewModel.toggleDepositStatus(depId, status)
+                                },
+                                onToggleWithdrawalStatus = { wthId, status ->
+                                    viewModel.toggleWithdrawalStatus(wthId, status)
                                 }
                             )
                         }

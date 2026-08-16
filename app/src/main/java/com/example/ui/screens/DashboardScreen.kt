@@ -1,5 +1,10 @@
 package com.example.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,7 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -579,49 +584,18 @@ fun DashboardScreen(
             )
         }
 
-        // Quick FAQ & Help Banner Card
+        // MTN MoMo Instant Deposit QR & Dynamic USSD Encoder Bento Card
         item {
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onFaqClick() }
-                    .testTag("dashboard_faq_banner"),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = GoldLight),
-                border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.5f))
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                        Box(
-                            modifier = Modifier
-                                .size(38.dp)
-                                .background(GoldAccent, CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Default.HelpOutline, contentDescription = null, tint = NavyDark, modifier = Modifier.size(20.dp))
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                text = "Have questions about the 3-day cycle?",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
-                            Text(
-                                text = "Read our FAQ guide on deposit limits, lock periods & verification.",
-                                fontSize = 11.sp,
-                                color = TextSecondary
-                            )
-                        }
-                    }
-                    Icon(Icons.Default.ChevronRight, contentDescription = null, tint = OrangeWarning)
-                }
-            }
+            DashboardMomoDepositQrCard(
+                onOpenDepositModal = onOpenDepositModal
+            )
+        }
+
+        // Interactive FAQ & Common Questions Bento Section
+        item {
+            DashboardFaqSection(
+                onFaqClick = onFaqClick
+            )
         }
 
         // Web & Windows Desktop Portal Banner
@@ -1303,6 +1277,593 @@ fun ReferralProgramCard(
                     color = TextSecondary,
                     modifier = Modifier.padding(vertical = 4.dp)
                 )
+            }
+        }
+    }
+}
+
+private data class DashboardFaqModel(
+    val id: String,
+    val category: String,
+    val question: String,
+    val answer: String,
+    val proTip: String? = null,
+    val iconEmoji: String = "❓"
+)
+
+@Composable
+fun DashboardFaqSection(
+    onFaqClick: () -> Unit = {}
+) {
+    val faqQuestions = remember {
+        listOf(
+            DashboardFaqModel(
+                id = "dfaq_1",
+                category = "3-Day Cycle",
+                iconEmoji = "⚡",
+                question = "How does the 3-day (72-hour) savings cycle work?",
+                answer = "When you deposit funds into any savings tier (e.g. 15,000 RWF), your principal enters an automated 72-hour locked micro-cycle. Your funds are secured in our high-liquidity reserve pool. At the exact completion of the 72 hours, 100% of your principal PLUS your guaranteed profit yield is automatically unlocked and credited to your Available Balance.",
+                proTip = "Track the live real-time countdown timer directly on your Savings Cycles dashboard!"
+            ),
+            DashboardFaqModel(
+                id = "dfaq_2",
+                category = "3-Day Cycle",
+                iconEmoji = "🔒",
+                question = "Can I withdraw or cancel my deposit before 72 hours?",
+                answer = "No. Funds remain strictly locked for the full 72-hour duration to maintain liquidity pool stability and guarantee fixed returns for all savers. Once matured, 100% of funds can be instantly withdrawn to MoMo/Crypto or reinvested into a new cycle.",
+                proTip = "You can participate in multiple savings cycles across different tiers simultaneously."
+            ),
+            DashboardFaqModel(
+                id = "dfaq_3",
+                category = "Payment Methods",
+                iconEmoji = "💳",
+                question = "Which payment methods are supported for deposits & withdrawals?",
+                answer = "We support multiple instant payment rails:\n• MTN Mobile Money (*182*8*1*1799283#)\n• Airtel Money (*182#)\n• Bank Transfer (BK, I&M, Equity)\n• Crypto USDT (TRC20 on TRON & BEP20 on BNB Chain) with 0 network gas fees.\nDeposits are confirmed instantly via SMS reference verification.",
+                proTip = "Always copy the MoMo Transaction ID from your confirmation SMS to verify deposits instantly."
+            ),
+            DashboardFaqModel(
+                id = "dfaq_4",
+                category = "Payment Methods",
+                iconEmoji = "📱",
+                question = "How fast are withdrawals processed to MoMo & Crypto?",
+                answer = "Withdrawal requests are processed automatically 24/7 and typically reach your MTN Mobile Money, Airtel, or USDT wallet address within 5 to 15 minutes. Official text proof of receipts can be downloaded directly from your withdrawal history.",
+                proTip = "There are zero hidden withdrawal fees on both Mobile Money and Crypto USDT payouts."
+            ),
+            DashboardFaqModel(
+                id = "dfaq_5",
+                category = "Reserve Safety",
+                iconEmoji = "🛡️",
+                question = "How does the 20,000,000 RWF Reserve Fund protect my funds?",
+                answer = "Future Smart Capital maintains an audited 20,000,000 RWF Liquidity Reserve Fund dedicated exclusively to backing user deposits and ensuring 100% solvency and uninterrupted on-time payouts under all market conditions.",
+                proTip = "You can monitor the live reserve fund balance at the top of the dashboard anytime."
+            ),
+            DashboardFaqModel(
+                id = "dfaq_6",
+                category = "Reserve Safety",
+                iconEmoji = "🔐",
+                question = "Is my account data and capital protected against fraud?",
+                answer = "Yes. All transactions use double-entry encryption, 24/7 automated ledger verification, and phone-bound KYC authentication. Payouts can only be dispatched to your registered and verified recipient account.",
+                proTip = "Always register with the exact phone number or wallet you use to receive disbursements."
+            )
+        )
+    }
+
+    var selectedFilter by remember { mutableStateOf("All") }
+    var expandedFaqId by remember { mutableStateOf<String?>("dfaq_1") }
+
+    val filteredList = remember(selectedFilter) {
+        if (selectedFilter == "All") faqQuestions
+        else faqQuestions.filter { it.category == selectedFilter }
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("dashboard_faq_section_card"),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = BentoCardBg),
+        border = BorderStroke(1.dp, BentoBorder)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            // Section Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .background(GoldLight, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "❓", fontSize = 18.sp)
+                    }
+                    Column {
+                        Text(
+                            text = "Frequently Asked Questions",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary,
+                            letterSpacing = (-0.4).sp
+                        )
+                        Text(
+                            text = "3-day cycle, payment rails & reserve fund safety",
+                            fontSize = 11.5.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
+
+                Surface(
+                    color = BlueLight,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "Instant Answers",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = BluePrimary,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Filter Tabs
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                val filters = listOf(
+                    "All" to "All",
+                    "3-Day Cycle" to "⚡ 3-Day Cycle",
+                    "Payment Methods" to "💳 Payments",
+                    "Reserve Safety" to "🛡️ Reserve Safety"
+                )
+
+                filters.forEach { (key, label) ->
+                    val isSelected = selectedFilter == key
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isSelected) NavyDark else LightBackground,
+                        border = BorderStroke(1.dp, if (isSelected) NavyDark else BentoBorder),
+                        modifier = Modifier
+                            .clickable { selectedFilter = key }
+                    ) {
+                        Text(
+                            text = label,
+                            fontSize = 11.sp,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = if (isSelected) GoldAccent else TextSecondary,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Accordion FAQ list
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                filteredList.forEach { faq ->
+                    val isExpanded = expandedFaqId == faq.id
+                    DashboardFaqAccordionCard(
+                        faq = faq,
+                        isExpanded = isExpanded,
+                        onToggle = {
+                            expandedFaqId = if (isExpanded) null else faq.id
+                        }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // View Full FAQ & Help button
+            Button(
+                onClick = onFaqClick,
+                colors = ButtonDefaults.buttonColors(containerColor = GoldLight, contentColor = NavyDark),
+                border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.6f)),
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag("dashboard_view_all_faq_btn")
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(vertical = 2.dp)
+                ) {
+                    Icon(Icons.Default.HelpOutline, contentDescription = null, tint = OrangeWarning, modifier = Modifier.size(18.dp))
+                    Text(
+                        text = "Open Full Help Center & 24/7 Support 📖",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 13.sp,
+                        color = TextPrimary
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DashboardFaqAccordionCard(
+    faq: DashboardFaqModel,
+    isExpanded: Boolean,
+    onToggle: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isExpanded) LightBackground else BentoCardBg
+        ),
+        border = BorderStroke(1.dp, if (isExpanded) BluePrimary.copy(alpha = 0.3f) else BentoBorder),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggle() }
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(text = faq.iconEmoji, fontSize = 15.sp)
+                    Text(
+                        text = faq.question,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                }
+
+                Icon(
+                    imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (isExpanded) "Collapse" else "Expand",
+                    tint = if (isExpanded) BluePrimary else TextSecondary,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(modifier = Modifier.padding(top = 10.dp)) {
+                    Text(
+                        text = faq.answer,
+                        fontSize = 12.sp,
+                        color = TextSecondary,
+                        lineHeight = 18.sp
+                    )
+
+                    if (faq.proTip != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = GoldLight,
+                            border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Text(text = "💡", fontSize = 12.sp)
+                                Text(
+                                    text = faq.proTip,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = TextPrimary,
+                                    lineHeight = 16.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DashboardMomoDepositQrCard(
+    onOpenDepositModal: (String) -> Unit
+) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var selectedTierKey by remember { mutableStateOf("C") } // "A", "B", "C", "D"
+    var includeAmountInQr by remember { mutableStateOf(false) }
+
+    val amount = when (selectedTierKey) {
+        "A" -> 6000
+        "B" -> 10000
+        "C" -> 15000
+        "D" -> 45000
+        else -> 15000
+    }
+
+    val baseUssdCode = "*182*8*1*1799283#"
+    val dynamicUssdCode = if (includeAmountInQr) "*182*8*1*1799283*$amount#" else baseUssdCode
+    val encodedQrData = java.net.URLEncoder.encode(dynamicUssdCode, "UTF-8")
+    val qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=$encodedQrData&color=001A40&bgcolor=FFFFFF&margin=4"
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("dashboard_momo_qr_card"),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = BentoCardBg),
+        border = BorderStroke(1.dp, BentoBorder)
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            // Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .background(GoldLight, CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(text = "📱", fontSize = 18.sp)
+                    }
+                    Column {
+                        Text(
+                            text = "Instant MTN MoMo Deposit QR",
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary,
+                            letterSpacing = (-0.4).sp
+                        )
+                        Text(
+                            text = "Scan directly with MoMo or Mobile Banking App",
+                            fontSize = 11.5.sp,
+                            color = TextSecondary
+                        )
+                    }
+                }
+
+                Surface(
+                    color = GoldAccent,
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "Dynamic USSD",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Black,
+                        color = NavyDark,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // Tier Selector Chips
+            Text(
+                text = "Select Savings Tier for Dynamic USSD Encoding:",
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextSecondary
+            )
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                listOf(
+                    "A" to "6,000",
+                    "B" to "10,000",
+                    "C" to "15,000",
+                    "D" to "45,000"
+                ).forEach { (tier, label) ->
+                    val isSelected = selectedTierKey == tier
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = if (isSelected) NavyDark else LightBackground,
+                        border = BorderStroke(1.dp, if (isSelected) NavyDark else BentoBorder),
+                        modifier = Modifier
+                            .weight(1f)
+                            .clickable { selectedTierKey = tier }
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 6.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = "Tier $tier",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) GoldAccent else TextSecondary
+                            )
+                            Text(
+                                text = label,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                color = if (isSelected) Color.White else TextPrimary
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // QR Code Center Box
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = LightBackground,
+                border = BorderStroke(1.dp, GoldAccent.copy(alpha = 0.4f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Encoding mode toggle
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (!includeAmountInQr) NavyDark else Color.Transparent,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(16.dp))
+                                .clickable { includeAmountInQr = false }
+                        ) {
+                            Text(
+                                text = "Merchant Code Only",
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (!includeAmountInQr) GoldAccent else TextSecondary,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(6.dp))
+
+                        Surface(
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (includeAmountInQr) NavyDark else Color.Transparent,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(16.dp))
+                                .clickable { includeAmountInQr = true }
+                        ) {
+                            Text(
+                                text = "Encode %,d RWF".format(amount),
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (includeAmountInQr) GoldAccent else TextSecondary,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // QR Code Frame
+                    Box(
+                        modifier = Modifier
+                            .size(190.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color.White)
+                            .border(2.dp, GoldAccent, RoundedCornerShape(16.dp))
+                            .padding(6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AsyncImage(
+                            model = qrUrl,
+                            contentDescription = "MTN MoMo USSD Dynamic QR Code",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .testTag("dashboard_momo_qr_image")
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = BlueLight,
+                        border = BorderStroke(1.dp, BluePrimary.copy(alpha = 0.3f))
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Text(text = "⚡", fontSize = 12.sp)
+                            Text(
+                                text = dynamicUssdCode,
+                                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = BluePrimary
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    Text(
+                        text = "Scan with your phone camera, MoMo App, or Banking App (BK, Equity, I&M) to initiate USSD deposit directly.",
+                        fontSize = 11.sp,
+                        color = TextSecondary,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        lineHeight = 15.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Action buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                com.example.ui.components.copyToClipboard(context, "USSD String", dynamicUssdCode)
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                        ) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Copy USSD", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = {
+                                com.example.ui.components.launchUssdDialIntent(context, dynamicUssdCode)
+                            },
+                            modifier = Modifier.weight(1f),
+                            colors = ButtonDefaults.buttonColors(containerColor = GoldAccent, contentColor = NavyDark),
+                            shape = RoundedCornerShape(12.dp),
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 8.dp)
+                        ) {
+                            Icon(Icons.Default.Phone, contentDescription = null, modifier = Modifier.size(15.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Tap to Dial", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Button(
+                        onClick = { onOpenDepositModal(selectedTierKey) },
+                        colors = ButtonDefaults.buttonColors(containerColor = BluePrimary, contentColor = Color.White),
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Submit Tx Verification & Start Cycle (Tier $selectedTierKey) 🚀",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
     }

@@ -48,6 +48,9 @@
   <!-- Babel for standalone JSX compilation -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
   <style>
     body {
       font-family: 'Plus Jakarta Sans', sans-serif;
@@ -59,6 +62,13 @@
     .custom-scrollbar::-webkit-scrollbar-thumb {
       background: #CBD5E1;
       border-radius: 999px;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.8; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.02); }
+    }
+    .gold-glow {
+      box-shadow: 0 4px 20px rgba(229, 169, 59, 0.25);
     }
   </style>
 </head>
@@ -84,10 +94,61 @@
       EUR: { symbol: '€', rate: 0.00067 }
     };
 
+    const WEB_TRANSLATIONS = {
+      EN: {
+        dashboard: "Dashboard",
+        cycles: "Active Cycles",
+        withdrawals: "Withdrawals",
+        admin: "Admin Hub",
+        deposit: "+ Deposit",
+        dark: "🌙 Dark",
+        light: "☀️ Light"
+      },
+      RW: {
+        dashboard: "Ahabanza",
+        cycles: "Inshuro Zikora",
+        withdrawals: "Kubikuza",
+        admin: "Ubuyobozi",
+        deposit: "+ Bika",
+        dark: "🌙 Umwijima",
+        light: "☀️ Urumuri"
+      },
+      FR: {
+        dashboard: "Tableau de bord",
+        cycles: "Cycles Actifs",
+        withdrawals: "Retraits",
+        admin: "Hub Admin",
+        deposit: "+ Déposer",
+        dark: "🌙 Sombre",
+        light: "☀️ Clair"
+      }
+    };
+
     function App() {
+      const [lang, setLang] = useState(() => {
+        return localStorage.getItem('sfc_lang') || 'EN';
+      });
       const [currency, setCurrency] = useState('RWF');
-      const [activeTab, setActiveTab] = useState('dashboard');
+      const [theme, setTheme] = useState(() => {
+        return localStorage.getItem('sfc_theme') || 'dark';
+      });
+      const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, cycles, deposit, withdraw, admin
       const [reserveFund, setReserveFund] = useState(20000000);
+
+      const t = WEB_TRANSLATIONS[lang] || WEB_TRANSLATIONS.EN;
+
+      useEffect(() => {
+        localStorage.setItem('sfc_theme', theme);
+        if (theme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }, [theme]);
+
+      const toggleTheme = () => {
+        setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+      };
       const [userCycles, setUserCycles] = useState(() => {
         const saved = localStorage.getItem('sfc_cycles');
         return saved ? JSON.parse(saved) : [
@@ -120,13 +181,114 @@
       });
 
       const [announcements, setAnnouncements] = useState([
-        { id: '1', title: '🛡️ 20,000,000 RWF Capital Reserve Backing', content: 'All user 3-day savings cycles are 100% insured against loss.', urgent: false },
-        { id: '2', title: '⚡ MoMo Merchant Deposit Activated', content: 'Direct merchant code *182*8*1*1799283# deposits are credited instantly.', urgent: false }
+        {
+          id: '1',
+          title: '🛡️ 20,000,000 RWF Capital Reserve Backing',
+          content: 'All user 3-day savings cycles are 100% insured against loss with guaranteed payouts.',
+          category: 'IMPORTANT',
+          imageUrl: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&w=800&q=80',
+          time: 'Just now',
+          urgent: true
+        },
+        {
+          id: '2',
+          title: '⚡ MoMo Merchant Deposit Activated',
+          content: 'Direct merchant code *182*8*1*1799283# deposits are credited automatically to your account.',
+          category: 'NEWS',
+          imageUrl: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=800&q=80',
+          time: '2 hours ago',
+          urgent: false
+        },
+        {
+          id: '3',
+          title: '🚀 High-Yield 3-Day Cycles Open',
+          content: 'Tier A, B, C, and D plans are active! Start saving and receive your principal + yields.',
+          category: 'PROMO',
+          imageUrl: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=800&q=80',
+          time: '1 day ago',
+          urgent: false
+        }
       ]);
 
       const [depositModalOpen, setDepositModalOpen] = useState(false);
+      const [notificationsModalOpen, setNotificationsModalOpen] = useState(false);
       const [selectedTierForDeposit, setSelectedTierForDeposit] = useState(TIERS_DATA[2]);
       const [notification, setNotification] = useState(null);
+      const [welcomeBonusClaimed, setWelcomeBonusClaimed] = useState(() => {
+        return localStorage.getItem('sfc_welcome_bonus') === 'true';
+      });
+
+      // Refer-a-Friend state
+      const [referralCode] = useState('SFC50');
+      const [pendingBonusPercent, setPendingBonusPercent] = useState(() => {
+        const saved = localStorage.getItem('sfc_pending_bonus_percent');
+        return saved ? parseFloat(saved) : 0.005; // default initial +0.5% pending boost
+      });
+      const [referralBonusCash, setReferralBonusCash] = useState(() => {
+        const saved = localStorage.getItem('sfc_referral_bonus_cash');
+        return saved ? parseFloat(saved) : 1000;
+      });
+      const [referredFriends, setReferredFriends] = useState(() => {
+        const saved = localStorage.getItem('sfc_referred_friends');
+        if (saved) {
+          try { return JSON.parse(saved); } catch(e) {}
+        }
+        return [
+          { id: 'ref_1', name: 'Eric Mugisha', phone: '+250 788 412 884', joinedAt: 'Yesterday', bonusGranted: '+0.5% Next Cycle Yield' }
+        ];
+      });
+
+      useEffect(() => {
+        localStorage.setItem('sfc_pending_bonus_percent', pendingBonusPercent.toString());
+      }, [pendingBonusPercent]);
+
+      useEffect(() => {
+        localStorage.setItem('sfc_referral_bonus_cash', referralBonusCash.toString());
+      }, [referralBonusCash]);
+
+      useEffect(() => {
+        localStorage.setItem('sfc_referred_friends', JSON.stringify(referredFriends));
+      }, [referredFriends]);
+
+      const handleClaimWelcomeBonus = () => {
+        if (welcomeBonusClaimed) return;
+        setWelcomeBonusClaimed(true);
+        localStorage.setItem('sfc_welcome_bonus', 'true');
+        const bonusDep = {
+          id: 'DEP-BONUS-' + Math.floor(1000 + Math.random() * 9000),
+          phone: '+250788123456',
+          amount: 1000,
+          momoTxId: 'BONUS-WELCOME-1000',
+          status: 'APPROVED',
+          time: 'Just now'
+        };
+        setDeposits(prev => [bonusDep, ...prev]);
+        showToast('🎉 1,000 RWF Welcome Bonus claimed! Added to your funds.');
+      };
+
+      const handleSimulateReferral = (friendName = 'Aline Uwase') => {
+        const phone = '+250 788 ' + Math.floor(100000 + Math.random() * 900000);
+        const newFriend = {
+          id: 'ref_' + Date.now(),
+          name: friendName,
+          phone: phone,
+          joinedAt: 'Just now',
+          bonusGranted: '+0.5% Next Cycle Yield & 1,000 RWF'
+        };
+        setReferredFriends(prev => [newFriend, ...prev]);
+        setPendingBonusPercent(prev => prev + 0.005);
+        setReferralBonusCash(prev => prev + 1000);
+        const bonusDep = {
+          id: 'DEP-REF-' + Math.floor(1000 + Math.random() * 9000),
+          phone: '+250788123456',
+          amount: 1000,
+          momoTxId: 'BONUS-REF-' + Math.floor(1000 + Math.random() * 9000),
+          status: 'APPROVED',
+          time: 'Just now'
+        };
+        setDeposits(prev => [bonusDep, ...prev]);
+        showToast(`🎉 ${friendName} registered with your referral link! +0.5% next cycle bonus & 1,000 RWF granted!`);
+      };
 
       useEffect(() => {
         localStorage.setItem('sfc_cycles', JSON.stringify(userCycles));
@@ -162,12 +324,15 @@
 
       const handleStartCycle = (tier, customAmount = null) => {
         const amount = customAmount || tier.minAmount;
-        const profit = Math.round(amount * tier.rate);
+        const appliedBonus = pendingBonusPercent;
+        const effectiveRate = tier.rate + appliedBonus;
+        const profit = Math.round(amount * effectiveRate);
         const newCycle = {
           id: 'CYC-' + Math.floor(1000 + Math.random() * 9000),
           tierName: tier.name,
           depositAmount: amount,
-          interestRate: tier.rate,
+          interestRate: effectiveRate,
+          bonusApplied: appliedBonus,
           profit: profit,
           totalPayout: amount + profit,
           startedAt: Date.now(),
@@ -175,42 +340,70 @@
           status: 'ACTIVE'
         };
         setUserCycles([newCycle, ...userCycles]);
-        showToast(`🎉 3-Day Savings Cycle Activated for ${formatMoney(amount)}!`);
+        if (appliedBonus > 0) {
+          setPendingBonusPercent(0);
+          showToast(`🎉 Cycle Activated with +${(appliedBonus * 100).toFixed(1)}% Referral Yield Boost applied! Total yield: +${(effectiveRate * 100).toFixed(1)}%`);
+        } else {
+          showToast(`🎉 3-Day Savings Cycle Activated for ${formatMoney(amount)}!`);
+        }
       };
 
       const handleDepositSubmit = (formData) => {
+        const paymentMethod = formData.paymentMethod || 'MTN Mobile Money';
         const newDep = {
           id: 'DEP-' + Math.floor(1000 + Math.random() * 9000),
           phone: formData.phone,
           amount: Number(formData.amount),
           momoTxId: formData.txId,
+          paymentMethod: paymentMethod,
+          network: paymentMethod,
           status: 'APPROVED',
           time: 'Just now'
         };
         setDeposits([newDep, ...deposits]);
         handleStartCycle(formData.tier, Number(formData.amount));
         setDepositModalOpen(false);
+        setActiveTab('cycles');
+        showToast(`⚡ Payment of ${formatMoney(Number(formData.amount))} confirmed via ${paymentMethod}! 3-Day Vault is now live!`);
+
+        // Async API sync
+        try {
+          fetch('/api/deposits', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userId: 'USER-1',
+              phone: formData.phone,
+              amount: formData.amount,
+              momoTxId: formData.txId,
+              paymentMethod: paymentMethod,
+              network: paymentMethod,
+              tierId: formData.tier?.id
+            })
+          }).catch(() => {});
+        } catch (e) {}
       };
 
-      const handleWithdrawSubmit = (phone, amount) => {
+      const handleWithdrawSubmit = (phone, amount, method = 'MTN Mobile Money') => {
         const numAmount = Number(amount);
         if (!phone || numAmount <= 0) {
-          showToast('Please enter a valid phone and amount', 'error');
+          showToast('Please enter a valid address/phone and amount', 'error');
           return;
         }
         const newWth = {
           id: 'WTH-' + Math.floor(1000 + Math.random() * 9000),
           phone,
           amount: numAmount,
+          method,
           status: 'PENDING',
           time: 'Just now'
         };
         setWithdrawals([newWth, ...withdrawals]);
-        showToast(`🚀 Withdrawal request of ${formatMoney(numAmount)} submitted to ${phone}!`);
+        showToast(`🚀 Withdrawal request of ${formatMoney(numAmount)} submitted via ${method}!`);
       };
 
       return (
-        <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900">
+        <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-[#020617] text-slate-900 dark:text-slate-100 transition-colors duration-200">
           {/* Header */}
           <header className="sticky top-0 z-40 bg-[#001A40] text-white shadow-lg border-b border-slate-800">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -230,34 +423,74 @@
                   onClick={() => setActiveTab('dashboard')}
                   className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'dashboard' ? 'bg-[#E5A93B] text-[#001A40] shadow' : 'text-slate-300 hover:text-white'}`}
                 >
-                  Dashboard
+                  {t.dashboard}
                 </button>
                 <button
                   onClick={() => setActiveTab('cycles')}
                   className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'cycles' ? 'bg-[#E5A93B] text-[#001A40] shadow' : 'text-slate-300 hover:text-white'}`}
                 >
-                  Active Cycles ({userCycles.length})
+                  {t.cycles} ({userCycles.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('withdraw')}
                   className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'withdraw' ? 'bg-[#E5A93B] text-[#001A40] shadow' : 'text-slate-300 hover:text-white'}`}
                 >
-                  Withdrawals
+                  {t.withdrawals}
                 </button>
                 <button
                   onClick={() => setActiveTab('admin')}
                   className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'admin' ? 'bg-[#E5A93B] text-[#001A40] shadow' : 'text-slate-300 hover:text-white'}`}
                 >
-                  Admin Hub
+                  {t.admin}
                 </button>
               </nav>
 
-              {/* Action and Currency */}
-              <div className="flex items-center gap-3">
+              {/* Action, Notifications, Language, Theme Toggle and Currency */}
+              <div className="flex items-center gap-2 sm:gap-3">
+                {/* Language Switcher Dropdown */}
+                <select
+                  value={lang}
+                  onChange={(e) => {
+                    setLang(e.target.value);
+                    localStorage.setItem('sfc_lang', e.target.value);
+                  }}
+                  className="bg-slate-800 text-amber-400 text-xs font-bold px-2.5 py-2 rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-400 cursor-pointer"
+                  title="Switch Language / Hitamo Ururimi / Choisir la Langue"
+                >
+                  <option value="EN">🇬🇧 EN</option>
+                  <option value="RW">🇷🇼 RW</option>
+                  <option value="FR">🇫🇷 FR</option>
+                </select>
+
+                {/* Theme Switcher Button (Dark / Light) */}
+                <button
+                  onClick={toggleTheme}
+                  title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-amber-300 border border-slate-700 transition-all flex items-center gap-1.5 text-xs font-bold shadow-sm"
+                >
+                  <span>{theme === 'dark' ? t.dark : t.light}</span>
+                </button>
+
+                {/* Header Notification Bell */}
+                <button
+                  onClick={() => setNotificationsModalOpen(true)}
+                  title="View Announcements & Notifications"
+                  className="relative p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-amber-400 border border-slate-700 transition-all flex items-center justify-center"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                  {announcements.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-black rounded-full h-4 min-w-[16px] px-1 flex items-center justify-center animate-pulse border border-[#001A40]">
+                      {announcements.length}
+                    </span>
+                  )}
+                </button>
+
                 <select
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
-                  className="bg-slate-800 text-amber-400 text-xs font-bold px-3 py-2 rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-400"
+                  className="bg-slate-800 text-amber-400 text-xs font-bold px-2.5 py-2 rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-400"
                 >
                   <option value="RWF">🇷🇼 RWF</option>
                   <option value="USD">🇺🇸 USD ($)</option>
@@ -268,19 +501,19 @@
 
                 <button
                   onClick={() => { setSelectedTierForDeposit(TIERS_DATA[2]); setDepositModalOpen(true); }}
-                  className="bg-gradient-to-r from-[#E5A93B] to-amber-400 text-[#001A40] px-4 py-2 rounded-xl text-sm font-extrabold shadow-md hover:brightness-110 active:scale-95 transition-all"
+                  className="bg-gradient-to-r from-[#E5A93B] to-amber-400 text-[#001A40] px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold shadow-md hover:brightness-110 active:scale-95 transition-all"
                 >
-                  + Deposit
+                  {t.deposit}
                 </button>
               </div>
             </div>
 
             {/* Mobile Tab Bar */}
             <div className="md:hidden flex border-t border-slate-800 bg-slate-900/90 px-2 py-1 justify-around text-xs font-bold text-slate-400">
-              <button onClick={() => setActiveTab('dashboard')} className={`py-1.5 px-2 ${activeTab === 'dashboard' ? 'text-amber-400 border-b-2 border-amber-400' : ''}`}>Dashboard</button>
-              <button onClick={() => setActiveTab('cycles')} className={`py-1.5 px-2 ${activeTab === 'cycles' ? 'text-amber-400 border-b-2 border-amber-400' : ''}`}>Cycles</button>
-              <button onClick={() => setActiveTab('withdraw')} className={`py-1.5 px-2 ${activeTab === 'withdraw' ? 'text-amber-400 border-b-2 border-amber-400' : ''}`}>Withdraw</button>
-              <button onClick={() => setActiveTab('admin')} className={`py-1.5 px-2 ${activeTab === 'admin' ? 'text-amber-400 border-b-2 border-amber-400' : ''}`}>Admin</button>
+              <button onClick={() => setActiveTab('dashboard')} className={`py-1.5 px-2 ${activeTab === 'dashboard' ? 'text-amber-400 border-b-2 border-amber-400' : ''}`}>{t.dashboard}</button>
+              <button onClick={() => setActiveTab('cycles')} className={`py-1.5 px-2 ${activeTab === 'cycles' ? 'text-amber-400 border-b-2 border-amber-400' : ''}`}>{t.cycles}</button>
+              <button onClick={() => setActiveTab('withdraw')} className={`py-1.5 px-2 ${activeTab === 'withdraw' ? 'text-amber-400 border-b-2 border-amber-400' : ''}`}>{t.withdrawals}</button>
+              <button onClick={() => setActiveTab('admin')} className={`py-1.5 px-2 ${activeTab === 'admin' ? 'text-amber-400 border-b-2 border-amber-400' : ''}`}>{t.admin}</button>
             </div>
           </header>
 
@@ -293,13 +526,20 @@
           )}
 
           {/* Announcements Banner */}
-          <div className="bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-amber-500/15 border-b border-amber-500/30 px-4 py-2.5">
-            <div className="max-w-7xl mx-auto flex items-center justify-between text-xs sm:text-sm font-semibold text-slate-800">
+          <div
+            onClick={() => setNotificationsModalOpen(true)}
+            className="cursor-pointer bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-amber-500/15 border-b border-amber-500/30 px-4 py-2.5 hover:bg-amber-400/20 transition-all text-slate-800 dark:text-amber-200"
+          >
+            <div className="max-w-7xl mx-auto flex items-center justify-between text-xs sm:text-sm font-semibold">
               <div className="flex items-center gap-2 overflow-hidden">
-                <span className="bg-amber-500 text-slate-950 text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full">Reserve Protected</span>
+                <span className="bg-amber-500 text-slate-950 text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <span>📢</span>
+                  <span>Notice</span>
+                </span>
                 <span className="truncate">{announcements[0]?.title} — {announcements[0]?.content}</span>
+                <span className="text-[11px] text-blue-600 dark:text-amber-300 font-bold underline whitespace-nowrap ml-1">View Details ↗</span>
               </div>
-              <span className="hidden sm:inline-block text-xs font-bold text-amber-700 ml-4 whitespace-nowrap">
+              <span className="hidden sm:inline-block text-xs font-bold text-amber-700 dark:text-amber-300 ml-4 whitespace-nowrap">
                 Reserve: {formatMoney(reserveFund)}
               </span>
             </div>
@@ -316,7 +556,17 @@
                 activeCyclesCount={userCycles.length}
                 tiers={TIERS_DATA}
                 onSelectTier={(tier) => { setSelectedTierForDeposit(tier); setDepositModalOpen(true); }}
+                onOpenCalculator={() => {}}
                 userCycles={userCycles}
+                welcomeBonusClaimed={welcomeBonusClaimed}
+                onClaimWelcomeBonus={handleClaimWelcomeBonus}
+                referralCode={referralCode}
+                pendingBonusPercent={pendingBonusPercent}
+                referralBonusCash={referralBonusCash}
+                referredFriends={referredFriends}
+                onSimulateReferral={handleSimulateReferral}
+                showToast={showToast}
+                onNavigateFaq={() => setActiveTab('faq')}
               />
             )}
 
@@ -347,6 +597,22 @@
                 formatMoney={formatMoney}
                 announcements={announcements}
                 onAddAnnouncement={(ann) => setAnnouncements([ann, ...announcements])}
+                onUpdateDepositStatus={(id, status) => {
+                  setDeposits(prev => {
+                    const updated = prev.map(d => d.id === id ? { ...d, status } : d);
+                    localStorage.setItem('sfc_deposits', JSON.stringify(updated));
+                    return updated;
+                  });
+                  showToast(`Deposit #${id} marked as ${status}`);
+                }}
+                onUpdateWithdrawalStatus={(id, status) => {
+                  setWithdrawals(prev => {
+                    const updated = prev.map(w => w.id === id ? { ...w, status } : w);
+                    localStorage.setItem('sfc_withdrawals', JSON.stringify(updated));
+                    return updated;
+                  });
+                  showToast(`Withdrawal #${id} marked as ${status}`);
+                }}
               />
             )}
           </main>
@@ -358,6 +624,15 @@
               formatMoney={formatMoney}
               onClose={() => setDepositModalOpen(false)}
               onSubmit={handleDepositSubmit}
+            />
+          )}
+
+          {/* Announcements & Notifications Modal */}
+          {notificationsModalOpen && (
+            <AnnouncementsModal
+              announcements={announcements}
+              onClose={() => setNotificationsModalOpen(false)}
+              onDeleteAnnouncement={(id) => setAnnouncements(announcements.filter(a => a.id !== id))}
             />
           )}
 
@@ -381,9 +656,79 @@
     }
 
     // DASHBOARD VIEW
-    function DashboardView({ formatMoney, reserveFund, totalDeposited, totalEarned, activeCyclesCount, tiers, onSelectTier, userCycles }) {
+    function DashboardView({ formatMoney, reserveFund, totalDeposited, totalEarned, activeCyclesCount, tiers, onSelectTier, userCycles, welcomeBonusClaimed, onClaimWelcomeBonus, referralCode, pendingBonusPercent, referralBonusCash, referredFriends, onSimulateReferral, showToast, onNavigateFaq }) {
       const [calcPrincipal, setCalcPrincipal] = useState(15000);
       const [calcCycles, setCalcCycles] = useState(5);
+      const [copied, setCopied] = useState(false);
+      const [faqCategory, setFaqCategory] = useState('All');
+      const [expandedFaq, setExpandedFaq] = useState('faq_1');
+
+      const dashboardFaqs = [
+        {
+          id: 'faq_1',
+          category: '3-Day Cycle',
+          icon: '⚡',
+          q: 'How does the 3-day (72-hour) savings cycle work?',
+          a: 'When you deposit funds into any savings tier (e.g. 15,000 RWF), your principal enters an automated 72-hour locked micro-cycle. Your funds are secured in our reserve pool. At the exact completion of the 72 hours, 100% of your principal PLUS your guaranteed profit yield is automatically unlocked and credited to your Available Balance.',
+          tip: 'Track the live countdown timer on your Active Cycles tab at any time!'
+        },
+        {
+          id: 'faq_2',
+          category: '3-Day Cycle',
+          icon: '🔒',
+          q: 'Can I withdraw or cancel my deposit before 72 hours?',
+          a: 'No. Funds remain strictly locked for the full 72-hour duration to maintain liquidity pool stability and guarantee fixed return yields for all savers. Once matured, 100% of funds can be instantly withdrawn to MoMo/Crypto or reinvested into a new cycle.',
+          tip: 'You can run multiple cycles across different tiers simultaneously.'
+        },
+        {
+          id: 'faq_3',
+          category: 'Payment Methods',
+          icon: '💳',
+          q: 'Which payment methods are supported for deposits & withdrawals?',
+          a: 'We support MTN Mobile Money (*182*8*1*1799283#), Airtel Money (*182#), direct Bank Transfer (BK, I&M, Equity), and Crypto USDT (TRC20 on TRON & BEP20 on BNB Chain) with 0 network gas fees. Deposits are confirmed instantly via SMS reference verification.',
+          tip: 'Save your SMS Transaction Reference ID during checkout to verify deposits instantly.'
+        },
+        {
+          id: 'faq_4',
+          category: 'Payment Methods',
+          icon: '📱',
+          q: 'How fast are withdrawals processed to MoMo & Crypto?',
+          a: 'Withdrawal requests are processed automatically 24/7 and typically reach your MTN Mobile Money, Airtel, or USDT wallet address within 5 to 15 minutes. Official text proof of receipts can be downloaded directly from your withdrawal history.',
+          tip: 'There are zero hidden withdrawal fees on both Mobile Money and Crypto USDT payouts.'
+        },
+        {
+          id: 'faq_5',
+          category: 'Reserve Safety',
+          icon: '🛡️',
+          q: 'How does the 20,000,000 RWF Reserve Fund protect my funds?',
+          a: 'Future Smart Capital maintains an audited 20,000,000 RWF Liquidity Reserve Fund dedicated exclusively to backing user deposits and ensuring 100% solvency and uninterrupted on-time payouts under all market conditions.',
+          tip: 'You can monitor the live reserve fund balance at the top of the dashboard anytime.'
+        },
+        {
+          id: 'faq_6',
+          category: 'Reserve Safety',
+          icon: '🔐',
+          q: 'Is my account data and capital protected against fraud?',
+          a: 'Yes. All transactions use double-entry encryption, 24/7 automated ledger verification, and phone-bound KYC authentication. Payouts can only be dispatched to your registered and verified recipient account.',
+          tip: 'Always register with the exact phone number or wallet address you use to receive disbursements.'
+        }
+      ];
+
+      const filteredFaqs = faqCategory === 'All' ? dashboardFaqs : dashboardFaqs.filter(f => f.category === faqCategory);
+
+      const referralLink = window.location.origin + window.location.pathname + '?ref=' + (referralCode || 'SFC50');
+
+      const handleCopyLink = () => {
+        navigator.clipboard.writeText(referralLink);
+        setCopied(true);
+        showToast('📋 Unique Referral Link copied to clipboard!');
+        setTimeout(() => setCopied(false), 3000);
+      };
+
+      const handleShareWhatsApp = () => {
+        const text = encodeURIComponent(`Join Future Smart Capital and earn guaranteed profit yields in 3 days! Register with my referral link: ${referralLink}`);
+        window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+      };
 
       const calcYield = useMemo(() => {
         const singleCycle = calcPrincipal * 0.02;
@@ -398,6 +743,42 @@
 
       return (
         <div className="space-y-8">
+          {/* Welcome Starter Bonus (1,000 RWF Free Starter Funds) */}
+          {!welcomeBonusClaimed ? (
+            <div className="bg-gradient-to-r from-[#001A40] via-[#002660] to-[#001433] rounded-2xl p-5 sm:p-6 text-white shadow-xl border-2 border-amber-400/80 flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden">
+              <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-amber-400/15 rounded-full blur-2xl pointer-events-none"></div>
+              <div className="flex items-center gap-4 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 text-slate-950 flex items-center justify-center text-3xl shadow-lg shrink-0">
+                  🎁
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-amber-400 text-slate-950 text-[10px] font-black uppercase px-2 py-0.5 rounded-md">FREE WELCOME GIFT</span>
+                    <span className="text-xs text-amber-300 font-bold">Instant 1,000 RWF ⚡</span>
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-extrabold text-white mt-1">1,000 RWF Welcome Bonus Available</h3>
+                  <p className="text-xs sm:text-sm text-slate-300 mt-0.5">Claim your free starter bonus now and add it directly to your funds to start your 3-day savings cycles!</p>
+                </div>
+              </div>
+              <button
+                onClick={onClaimWelcomeBonus}
+                className="w-full sm:w-auto shrink-0 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 px-6 py-3 rounded-xl font-black shadow-lg text-sm transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-2 relative z-10"
+              >
+                <span>🎉</span>
+                <span>Claim 1,000 RWF Now</span>
+              </button>
+            </div>
+          ) : (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-2.5 flex items-center justify-between text-xs text-emerald-800">
+              <div className="flex items-center gap-2">
+                <span>✅</span>
+                <span className="font-bold">Welcome Bonus Claimed:</span>
+                <span>1,000 RWF Starter Bonus has been credited to your funds.</span>
+              </div>
+              <span className="font-extrabold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded">+1,000 RWF Active</span>
+            </div>
+          )}
+
           {/* Hero Bento Banner */}
           <div className="bg-gradient-to-br from-[#001A40] via-[#05285D] to-[#001433] rounded-3xl p-6 sm:p-10 text-white shadow-xl relative overflow-hidden border border-slate-700/60">
             <div className="absolute top-0 right-0 w-96 h-96 bg-amber-400/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -456,8 +837,8 @@
           <div>
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900">Choose a Savings Tier</h2>
-                <p className="text-xs sm:text-sm text-slate-500 font-medium">Select a deposit tier to start compounding returns every 72 hours</p>
+                <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 dark:text-white">Choose a Savings Tier</h2>
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">Select a deposit tier to start compounding returns every 72 hours</p>
               </div>
             </div>
 
@@ -468,7 +849,7 @@
                 return (
                   <div
                     key={tier.id}
-                    className={`bg-white rounded-2xl p-6 border transition-all hover:shadow-xl flex flex-col justify-between relative ${isFeatured ? 'border-amber-400 ring-2 ring-amber-400/20 shadow-md' : 'border-slate-200'}`}
+                    className={`bg-white dark:bg-slate-900 rounded-2xl p-6 border transition-all hover:shadow-xl flex flex-col justify-between relative ${isFeatured ? 'border-amber-400 dark:border-amber-400/80 ring-2 ring-amber-400/20 shadow-md' : 'border-slate-200 dark:border-slate-800'}`}
                   >
                     {isFeatured && (
                       <span className="absolute -top-3 right-4 bg-gradient-to-r from-amber-500 to-amber-400 text-slate-950 text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-full shadow">
@@ -477,33 +858,33 @@
                     )}
 
                     <div>
-                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">{tier.badge}</div>
-                      <h3 className="text-lg font-extrabold text-slate-900 mt-1">{tier.name}</h3>
-                      <p className="text-xs text-slate-500 mt-1">{tier.desc}</p>
+                      <div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{tier.badge}</div>
+                      <h3 className="text-lg font-extrabold text-slate-900 dark:text-white mt-1">{tier.name}</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{tier.desc}</p>
 
-                      <div className="my-5 p-3.5 bg-slate-50 rounded-xl border border-slate-100 space-y-1.5">
+                      <div className="my-5 p-3.5 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-100 dark:border-slate-800/80 space-y-1.5">
                         <div className="flex justify-between text-xs">
-                          <span className="text-slate-500">Deposit Principal:</span>
-                          <span className="font-extrabold text-slate-900">{formatMoney(tier.minAmount)}</span>
+                          <span className="text-slate-500 dark:text-slate-400">Deposit Principal:</span>
+                          <span className="font-extrabold text-slate-900 dark:text-white">{formatMoney(tier.minAmount)}</span>
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-slate-500">Lock Duration:</span>
-                          <span className="font-bold text-blue-600">3 Days (72h)</span>
+                          <span className="text-slate-500 dark:text-slate-400">Lock Duration:</span>
+                          <span className="font-bold text-blue-600 dark:text-blue-400">3 Days (72h)</span>
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-slate-500">3-Day Profit (+2.0%):</span>
-                          <span className="font-extrabold text-emerald-600">+{formatMoney(profit)}</span>
+                          <span className="text-slate-500 dark:text-slate-400">3-Day Profit (+2.0%):</span>
+                          <span className="font-extrabold text-emerald-600 dark:text-emerald-400">+{formatMoney(profit)}</span>
                         </div>
-                        <div className="pt-1.5 border-t border-slate-200 flex justify-between text-xs font-extrabold">
-                          <span className="text-slate-700">Total Matured Payout:</span>
-                          <span className="text-slate-950">{formatMoney(tier.minAmount + profit)}</span>
+                        <div className="pt-1.5 border-t border-slate-200 dark:border-slate-800 flex justify-between text-xs font-extrabold">
+                          <span className="text-slate-700 dark:text-slate-300">Total Matured Payout:</span>
+                          <span className="text-slate-950 dark:text-amber-300">{formatMoney(tier.minAmount + profit)}</span>
                         </div>
                       </div>
                     </div>
 
                     <button
                       onClick={() => onSelectTier(tier)}
-                      className={`w-full py-2.5 rounded-xl font-extrabold text-sm transition-all shadow-sm ${isFeatured ? 'bg-[#001A40] text-amber-400 hover:bg-[#05285D]' : 'bg-slate-100 hover:bg-slate-200 text-slate-900'}`}
+                      className={`w-full py-2.5 rounded-xl font-extrabold text-sm transition-all shadow-sm ${isFeatured ? 'bg-[#001A40] text-amber-400 hover:bg-[#05285D] dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300' : 'bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-900 dark:text-white'}`}
                     >
                       Deposit {formatMoney(tier.minAmount)}
                     </button>
@@ -516,36 +897,36 @@
           {/* Interactive Yield Calculator & MoMo Deposit Guide */}
           <div id="calculator-section" className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Calculator Card */}
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-md">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-md">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-xl font-bold">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center text-xl font-bold">
                   📈
                 </div>
                 <div>
-                  <h3 className="text-lg font-extrabold text-slate-900">Compound Yield Calculator</h3>
-                  <p className="text-xs text-slate-500">Estimate profits across consecutive 3-day micro cycles</p>
+                  <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Compound Yield Calculator</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">Estimate profits across consecutive 3-day micro cycles</p>
                 </div>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Deposit Principal (RWF):</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Deposit Principal (RWF):</label>
                   <input
                     type="number"
                     value={calcPrincipal}
                     onChange={(e) => setCalcPrincipal(Number(e.target.value))}
                     step="1000"
                     min="1000"
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 font-extrabold text-slate-900 focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 font-extrabold text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Number of Consecutive Cycles:</label>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Number of Consecutive Cycles:</label>
                   <select
                     value={calcCycles}
                     onChange={(e) => setCalcCycles(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 font-bold text-slate-900 focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:outline-none"
                   >
                     <option value="1">1 Cycle (3 Days)</option>
                     <option value="2">2 Cycles (6 Days)</option>
@@ -574,37 +955,37 @@
             </div>
 
             {/* MoMo Merchant Instructions */}
-            <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-md flex flex-col justify-between">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-md flex flex-col justify-between">
               <div>
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center text-xl font-bold">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center text-xl font-bold">
                     💳
                   </div>
                   <div>
-                    <h3 className="text-lg font-extrabold text-slate-900">Instant MTN MoMo Deposition</h3>
-                    <p className="text-xs text-slate-500">Official verified merchant deposition instructions</p>
+                    <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Instant MTN MoMo Deposition</h3>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Official verified merchant deposition instructions</p>
                   </div>
                 </div>
 
-                <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-4 mb-4">
-                  <div className="text-xs font-bold text-blue-900 uppercase tracking-wider">MTN Mobile Money Merchant Code:</div>
-                  <div className="text-2xl font-black text-blue-700 font-mono mt-1 select-all bg-blue-100/80 px-3 py-1.5 rounded-lg inline-block">
+                <div className="bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-2xl p-4 mb-4">
+                  <div className="text-xs font-bold text-blue-900 dark:text-blue-300 uppercase tracking-wider">MTN Mobile Money Merchant Code:</div>
+                  <div className="text-2xl font-black text-blue-700 dark:text-amber-400 font-mono mt-1 select-all bg-blue-100/80 dark:bg-blue-900/60 px-3 py-1.5 rounded-lg inline-block">
                     *182*8*1*1799283#
                   </div>
-                  <div className="text-xs text-blue-600 font-semibold mt-2">
+                  <div className="text-xs text-blue-600 dark:text-blue-300 font-semibold mt-2">
                     Merchant Name: SMART FUTURE CAPITAL Ltd.
                   </div>
                 </div>
 
-                <ol className="text-xs text-slate-600 space-y-2 list-decimal list-inside font-medium leading-relaxed">
+                <ol className="text-xs text-slate-600 dark:text-slate-300 space-y-2 list-decimal list-inside font-medium leading-relaxed">
                   <li>Dial the MTN merchant code or use Airtel Money transfer.</li>
                   <li>Enter the required Tier deposit amount (e.g. 15,000 RWF).</li>
-                  <li>Confirm recipient is <strong className="text-slate-900">SMART FUTURE CAPITAL</strong> and input your PIN.</li>
+                  <li>Confirm recipient is <strong className="text-slate-900 dark:text-white">SMART FUTURE CAPITAL</strong> and input your PIN.</li>
                   <li>Copy the SMS Transaction ID and click the Deposit button to activate.</li>
                 </ol>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-slate-100">
+              <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   onClick={() => onSelectTier(tiers[2])}
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-xl shadow transition-all text-sm flex items-center justify-center gap-2"
@@ -612,6 +993,223 @@
                   <span>✅</span> Submit MoMo Transaction ID
                 </button>
               </div>
+            </div>
+          </div>
+
+          {/* Refer-a-Friend & Referral Link Generator Card */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-md space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center text-2xl font-bold">
+                  🎁
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-300 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-amber-700">
+                      0.5% BONUS BOOSTER
+                    </span>
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">+1,000 RWF per friend</span>
+                  </div>
+                  <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">Refer a Friend Program</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Invite friends to Future Smart Capital and earn a +0.5% yield boost on your next cycle!</p>
+                </div>
+              </div>
+
+              {pendingBonusPercent > 0 && (
+                <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-700 rounded-2xl px-4 py-2 text-right">
+                  <div className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider">Next Cycle Boost:</div>
+                  <div className="text-lg font-black text-emerald-600 dark:text-emerald-300">+{ (pendingBonusPercent * 100).toFixed(1) }% Boost Active ⚡</div>
+                </div>
+              )}
+            </div>
+
+            {/* Unique Link Generator Box */}
+            <div className="bg-slate-50 dark:bg-slate-950/60 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                  Your Unique Referral Link & Code ({referralCode})
+                </label>
+                <span className="text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded border border-amber-200 dark:border-amber-700">
+                  Instant Auto-Tracking
+                </span>
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-stretch gap-2">
+                <input
+                  type="text"
+                  readOnly
+                  value={referralLink}
+                  className="flex-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 text-xs font-mono font-bold text-slate-800 dark:text-slate-100 focus:outline-none select-all"
+                />
+                <button
+                  onClick={handleCopyLink}
+                  className="bg-[#001A40] hover:bg-[#05285D] text-amber-400 font-extrabold px-5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm shrink-0"
+                >
+                  <span>{copied ? '✅' : '📋'}</span>
+                  <span>{copied ? 'Copied!' : 'Copy Link'}</span>
+                </button>
+                <button
+                  onClick={handleShareWhatsApp}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold px-5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm shrink-0"
+                >
+                  <span>💬</span>
+                  <span>Share WhatsApp</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Test Referral Simulator */}
+            <div>
+              <button
+                onClick={() => {
+                  const names = ['Eric Mugisha', 'Aline Uwase', 'Patrick Hakizimana', 'Diane Keza', 'Jean-Paul Habimana'];
+                  onSimulateReferral(names[Math.floor(Math.random() * names.length)]);
+                }}
+                className="w-full border-2 border-dashed border-amber-400 dark:border-amber-500/60 bg-amber-50/60 dark:bg-amber-950/20 hover:bg-amber-100 dark:hover:bg-amber-900/30 text-amber-900 dark:text-amber-300 font-extrabold py-2.5 rounded-xl text-xs transition-all flex items-center justify-center gap-2"
+              >
+                <span>⚡</span>
+                <span>Test Referral: Simulate Friend Joining with Your Link</span>
+              </button>
+            </div>
+
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Friends Invited</div>
+                <div className="text-2xl font-black text-slate-900 dark:text-white mt-1">{referredFriends.length}</div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Registered via link</div>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Next Cycle Yield Boost</div>
+                <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1">+{ (pendingBonusPercent * 100).toFixed(1) }%</div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Applies to your next cycle</div>
+              </div>
+              <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <div className="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase">Referral Wallet Cash</div>
+                <div className="text-2xl font-black text-amber-600 dark:text-amber-400 mt-1">{formatMoney(referralBonusCash)}</div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Credited to funds</div>
+              </div>
+            </div>
+
+            {/* Invited Friends Tracking List */}
+            {referredFriends.length > 0 && (
+              <div className="space-y-3 pt-2">
+                <h4 className="text-sm font-extrabold text-slate-900 dark:text-white">Invited Friends Registration History ({referredFriends.length})</h4>
+                <div className="space-y-2">
+                  {referredFriends.map((friend) => (
+                    <div key={friend.id} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-bold text-xs flex items-center justify-center">
+                          {friend.name.charAt(0)}
+                        </div>
+                        <div>
+                          <div className="text-xs font-extrabold text-slate-900 dark:text-white">{friend.name}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">{friend.phone} • {friend.joinedAt}</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-extrabold bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 px-2.5 py-1 rounded-full">
+                        {friend.bonusGranted || '+0.5% Next Cycle Boost ⚡'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Frequently Asked Questions Dashboard Section */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-md space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center text-2xl font-bold">
+                  ❓
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-900 dark:text-blue-300 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-700">
+                      INSTANT ANSWERS
+                    </span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Knowledge & Guidance</span>
+                  </div>
+                  <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">Frequently Asked Questions</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Clear answers about the 3-day compounding cycles, payment methods & reserve safety</p>
+                </div>
+              </div>
+
+              {onNavigateFaq && (
+                <button
+                  onClick={onNavigateFaq}
+                  className="bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700/80 px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all self-start sm:self-auto"
+                >
+                  <span>Open Full Help Center 📖</span>
+                </button>
+              )}
+            </div>
+
+            {/* FAQ Category Pills */}
+            <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+              {[
+                { id: 'All', label: 'All Topics' },
+                { id: '3-Day Cycle', label: '⚡ 3-Day Cycle' },
+                { id: 'Payment Methods', label: '💳 Payment Rails' },
+                { id: 'Reserve Safety', label: '🛡️ Reserve Safety' }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setFaqCategory(tab.id)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                    faqCategory === tab.id
+                      ? 'bg-[#001A40] text-amber-400 dark:bg-amber-400 dark:text-slate-950 shadow-sm'
+                      : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* FAQ Accordion List */}
+            <div className="space-y-3">
+              {filteredFaqs.map((faq) => {
+                const isOpen = expandedFaq === faq.id;
+                return (
+                  <div
+                    key={faq.id}
+                    className={`rounded-2xl border transition-all ${
+                      isOpen
+                        ? 'bg-slate-50/90 dark:bg-slate-950/70 border-blue-300 dark:border-blue-800/70 shadow-sm'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                    }`}
+                  >
+                    <button
+                      onClick={() => setExpandedFaq(isOpen ? null : faq.id)}
+                      className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-3 focus:outline-none"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">{faq.icon}</span>
+                        <span className="text-sm font-extrabold text-slate-900 dark:text-white leading-snug">
+                          {faq.q}
+                        </span>
+                      </div>
+                      <span className={`text-slate-400 transform transition-transform duration-200 shrink-0 font-bold ${isOpen ? 'rotate-180 text-blue-600 dark:text-amber-400' : ''}`}>
+                        ▼
+                      </span>
+                    </button>
+
+                    {isOpen && (
+                      <div className="px-4 sm:px-5 pb-5 pt-1 space-y-3 text-xs text-slate-600 dark:text-slate-300 border-t border-slate-100 dark:border-slate-800/80 mt-1">
+                        <p className="leading-relaxed whitespace-pre-line font-medium">{faq.a}</p>
+                        {faq.tip && (
+                          <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl p-3 text-amber-900 dark:text-amber-300 flex items-start gap-2">
+                            <span className="shrink-0">💡</span>
+                            <span className="font-semibold">{faq.tip}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -634,32 +1232,32 @@
           label: text || 'Processing',
           icon: '⏳',
           dotClass: 'bg-amber-500 animate-pulse',
-          badgeClass: 'bg-amber-100 text-amber-800 border-amber-300',
-          iconBoxClass: 'bg-amber-100 text-amber-600 border-amber-300 shadow-amber-500/20',
+          badgeClass: 'bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700/80',
+          iconBoxClass: 'bg-amber-100 dark:bg-amber-950/80 text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-700/80 shadow-amber-500/20',
           description: 'Transaction in verification queue (1-10m)'
         },
         Maturing: {
           label: text || 'Maturing (72h)',
           icon: '⚡',
           dotClass: 'bg-blue-500 animate-pulse',
-          badgeClass: 'bg-blue-100 text-blue-800 border-blue-300',
-          iconBoxClass: 'bg-blue-100 text-blue-600 border-blue-300 shadow-blue-500/20',
+          badgeClass: 'bg-blue-100 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700/80',
+          iconBoxClass: 'bg-blue-100 dark:bg-blue-950/80 text-blue-600 dark:text-blue-400 border-blue-300 dark:border-blue-700/80 shadow-blue-500/20',
           description: 'Accruing 2.0% high-yield interest in locked vault'
         },
         Completed: {
           label: text || 'Completed',
           icon: '✅',
           dotClass: 'bg-emerald-500',
-          badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300',
-          iconBoxClass: 'bg-emerald-100 text-emerald-600 border-emerald-300 shadow-emerald-500/20',
+          badgeClass: 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700/80',
+          iconBoxClass: 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700/80 shadow-emerald-500/20',
           description: 'Funds successfully settled & disbursed'
         },
         Flagged: {
           label: text || 'Flagged',
           icon: '🚩',
           dotClass: 'bg-rose-500',
-          badgeClass: 'bg-rose-100 text-rose-800 border-rose-300',
-          iconBoxClass: 'bg-rose-100 text-rose-600 border-rose-300 shadow-rose-500/20',
+          badgeClass: 'bg-rose-100 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-700/80',
+          iconBoxClass: 'bg-rose-100 dark:bg-rose-950/80 text-rose-600 dark:text-rose-400 border-rose-300 dark:border-rose-700/80 shadow-rose-500/20',
           description: 'Under administrative safety review'
         }
       };
@@ -685,7 +1283,7 @@
                 <span className={`w-1.5 h-1.5 rounded-full ${cfg.dotClass}`}></span>
                 <span>{cfg.label}</span>
               </span>
-              <p className="text-[11px] text-slate-500 mt-0.5">{cfg.description}</p>
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{cfg.description}</p>
             </div>
           </div>
         );
@@ -714,19 +1312,19 @@
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-extrabold text-slate-900">Your Active Savings Cycles</h2>
-              <p className="text-xs sm:text-sm text-slate-500 font-medium">All active 72-hour liquidity locks and accrued interest</p>
+              <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">Your Active Savings Cycles</h2>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">All active 72-hour liquidity locks and accrued interest</p>
             </div>
             <button
               onClick={onOpenDeposit}
-              className="bg-[#001A40] text-amber-400 px-5 py-2.5 rounded-xl font-extrabold text-sm shadow hover:bg-[#05285D] transition-all"
+              className="bg-[#001A40] text-amber-400 px-5 py-2.5 rounded-xl font-extrabold text-sm shadow hover:bg-[#05285D] dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300 transition-all"
             >
               + Start New Cycle
             </button>
           </div>
 
           {/* Cycle State Legend & Verification Guide with StatusIndicator */}
-          <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <span className="font-extrabold text-slate-400 uppercase tracking-wider text-[11px]">Cycle Status Verification Guide:</span>
             <div className="flex flex-wrap items-center gap-2.5">
               <StatusIndicator status="Maturing" text="⚡ Maturing (72h)" />
@@ -737,10 +1335,10 @@
           </div>
 
           {cycles.length === 0 ? (
-            <div className="bg-white rounded-3xl p-12 text-center border border-slate-200 shadow-sm space-y-4">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-12 text-center border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
               <div className="text-5xl">⏳</div>
-              <h3 className="text-lg font-extrabold text-slate-800">No Active Savings Cycles Yet</h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto">Start a 3-day savings cycle now to lock in your 2.0% returns.</p>
+              <h3 className="text-lg font-extrabold text-slate-800 dark:text-white">No Active Savings Cycles Yet</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">Start a 3-day savings cycle now to lock in your 2.0% returns.</p>
               <button
                 onClick={onOpenDeposit}
                 className="bg-amber-400 text-slate-950 font-extrabold px-6 py-2.5 rounded-xl text-sm shadow hover:bg-amber-300 transition-all"
@@ -769,12 +1367,12 @@
                 const currentVaultWorth = c.depositAmount + accruedProfit;
 
                 return (
-                  <div key={c.id} className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+                  <div key={c.id} className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <StatusIndicator mode="icon" status={cycleStatus} />
                         <div>
-                          <span className="font-extrabold text-slate-900 text-base block">{c.tierName}</span>
+                          <span className="font-extrabold text-slate-900 dark:text-white text-base block">{c.tierName}</span>
                           <span className="text-[10px] font-mono font-bold text-slate-400">
                             {c.id}
                           </span>
@@ -786,7 +1384,7 @@
                     </div>
 
                     {/* Real-time Accrued Profit Indicator Banner */}
-                    <div className="bg-gradient-to-br from-emerald-950 to-slate-950 p-4 rounded-xl border border-emerald-500/40 text-white space-y-2.5 shadow-inner">
+                    <div className="bg-gradient-to-br from-emerald-950/80 to-slate-950 p-4 rounded-xl border border-emerald-500/40 text-white space-y-2.5 shadow-inner">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
@@ -833,50 +1431,50 @@
                     </div>
 
                     {/* 3-Step Lifecycle Visual Step Tracker */}
-                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex items-center justify-between text-[11px] font-bold">
-                      <div className="flex items-center gap-1 text-emerald-600">
-                        <span className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center text-[10px]">✓</span>
+                    <div className="bg-slate-50 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] font-bold">
+                      <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                        <span className="w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-900/60 flex items-center justify-center text-[10px]">✓</span>
                         <span>1. Deposited</span>
                       </div>
-                      <span className="text-slate-300">→</span>
-                      <div className="flex items-center gap-1 text-blue-600">
-                        <span className="w-4 h-4 rounded-full bg-blue-100 flex items-center justify-center text-[10px]">⚡</span>
+                      <span className="text-slate-300 dark:text-slate-600">→</span>
+                      <div className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                        <span className="w-4 h-4 rounded-full bg-blue-100 dark:bg-blue-900/60 flex items-center justify-center text-[10px]">⚡</span>
                         <span>2. Maturing (72h)</span>
                       </div>
-                      <span className="text-slate-300">→</span>
-                      <div className="flex items-center gap-1 text-emerald-600">
-                        <span className="w-4 h-4 rounded-full bg-emerald-100 flex items-center justify-center text-[10px]">3</span>
+                      <span className="text-slate-300 dark:text-slate-600">→</span>
+                      <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                        <span className="w-4 h-4 rounded-full bg-emerald-100 dark:bg-emerald-900/60 flex items-center justify-center text-[10px]">3</span>
                         <span>3. Profit Payout</span>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100 text-center">
+                    <div className="grid grid-cols-3 gap-2 bg-slate-50 dark:bg-slate-950/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800/80 text-center">
                       <div>
-                        <div className="text-[10px] text-slate-400 font-semibold">Principal</div>
-                        <div className="font-extrabold text-xs text-slate-900 mt-0.5">{formatMoney(c.depositAmount)}</div>
+                        <div className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">Principal</div>
+                        <div className="font-extrabold text-xs text-slate-900 dark:text-white mt-0.5">{formatMoney(c.depositAmount)}</div>
                       </div>
                       <div>
-                        <div className="text-[10px] text-slate-400 font-semibold">Target Yield</div>
-                        <div className="font-extrabold text-xs text-emerald-600 mt-0.5">+{formatMoney(c.profit)}</div>
+                        <div className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">Target Yield</div>
+                        <div className="font-extrabold text-xs text-emerald-600 dark:text-emerald-400 mt-0.5">+{formatMoney(c.profit)}</div>
                       </div>
                       <div>
-                        <div className="text-[10px] text-slate-400 font-semibold">Total Payout</div>
-                        <div className="font-extrabold text-xs text-slate-950 mt-0.5">{formatMoney(c.totalPayout)}</div>
+                        <div className="text-[10px] text-slate-400 dark:text-slate-500 font-semibold">Total Payout</div>
+                        <div className="font-extrabold text-xs text-slate-950 dark:text-amber-300 mt-0.5">{formatMoney(c.totalPayout)}</div>
                       </div>
                     </div>
 
                     <div>
                       <div className="flex justify-between text-xs font-semibold mb-1">
-                        <span className="text-slate-500">Countdown:</span>
-                        <span className="text-blue-600 font-bold font-mono">
+                        <span className="text-slate-500 dark:text-slate-400">Countdown:</span>
+                        <span className="text-blue-600 dark:text-blue-400 font-bold font-mono">
                           {remainingHours}h {remainingMins}m {remainingSecs}s ({progressPct}%)
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100">
-                      <span className="text-slate-400">Lock: 3 Days Fixed</span>
-                      <span className="text-emerald-600 font-bold">100% Reserve Insured 🛡️</span>
+                    <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-100 dark:border-slate-800">
+                      <span className="text-slate-400 dark:text-slate-500">Lock: 3 Days Fixed</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold">100% Reserve Insured 🛡️</span>
                     </div>
                   </div>
                 );
@@ -889,81 +1487,130 @@
 
     // WITHDRAW VIEW
     function WithdrawView({ withdrawals, formatMoney, availableBalance, onSubmitWithdraw }) {
-      const [phone, setPhone] = useState('');
+      const [phone, setPhone] = useState('+250 788 123 456');
       const [amount, setAmount] = useState('15000');
       const [selectedMethod, setSelectedMethod] = useState('MTN Mobile Money');
 
+      const isCrypto = selectedMethod.includes('USDT');
+      const isTrc20 = selectedMethod.includes('TRC20');
+      const isBep20 = selectedMethod.includes('BEP20');
+      const numAmount = Number(amount) || 0;
+      const estimatedUsdt = numAmount > 0 ? (numAmount / 1450).toFixed(2) : '0.00';
+
+      const handleMethodChange = (newMethod) => {
+        setSelectedMethod(newMethod);
+        if (newMethod.includes('TRC20')) {
+          setPhone('TR7NHkorK8y62zMpWC2AbWGE8326xTRON');
+        } else if (newMethod.includes('BEP20')) {
+          setPhone('0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c');
+        } else if (newMethod.includes('Bank')) {
+          setPhone('00044-012345678-90 (BK)');
+        } else {
+          setPhone('+250 788 123 456');
+        }
+      };
+
       return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-1 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-md space-y-5">
+          <div className="lg:col-span-1 bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-md space-y-5">
             <div>
-              <h3 className="text-xl font-extrabold text-slate-900">Request Withdrawal</h3>
-              <p className="text-xs text-slate-500 font-medium mt-1">Payout directly to your MTN or Airtel Mobile Money</p>
+              <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Request Withdrawal</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">Disbursements via Mobile Money, Bank & Crypto USDT</p>
             </div>
 
-            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
-              <div className="text-xs text-amber-800 font-semibold">Available Liquidity:</div>
-              <div className="text-2xl font-black text-slate-900 mt-0.5">{formatMoney(availableBalance)}</div>
+            <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-700/60 rounded-2xl p-4">
+              <div className="text-xs text-amber-800 dark:text-amber-300 font-semibold">Available Liquidity:</div>
+              <div className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">{formatMoney(availableBalance)}</div>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Payout Method:</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Payout Destination Method:</label>
                 <select
                   value={selectedMethod}
-                  onChange={(e) => setSelectedMethod(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 font-bold text-slate-900 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                  onChange={(e) => handleMethodChange(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 font-bold text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
                 >
-                  <option value="MTN Mobile Money">📱 MTN Mobile Money</option>
-                  <option value="Airtel Money">📱 Airtel Money</option>
-                  <option value="Bank Transfer (BPR/Equity)">🏦 Bank Transfer (BPR / Equity)</option>
+                  <option value="MTN Mobile Money">📱 MTN Mobile Money (+250)</option>
+                  <option value="Airtel Money">📱 Airtel Money (+250)</option>
+                  <option value="Bank Transfer (BPR/Equity/BK)">🏦 Bank Transfer (BK / I&M / Equity)</option>
+                  <option value="Crypto USDT (TRC20)">🪙 Crypto USDT (TRC20 - TRON)</option>
+                  <option value="Crypto USDT (BEP20)">🪙 Crypto USDT (BEP20 - BNB Chain)</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">MTN / Airtel Phone Number:</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {isTrc20 ? 'USDT TRC20 Wallet Address (TRON):' :
+                   isBep20 ? 'USDT BEP20 Wallet Address (BNB Chain):' :
+                   selectedMethod.includes('Bank') ? 'Bank Account Number & Bank Name:' :
+                   'MTN / Airtel Phone Number:'}
+                </label>
                 <input
                   type="text"
-                  placeholder="+250 788 123 456"
+                  placeholder={
+                    isTrc20 ? 'Starts with T (e.g. TR7NH...)' :
+                    isBep20 ? 'Starts with 0x (e.g. 0x7130...)' :
+                    selectedMethod.includes('Bank') ? 'e.g. 00044-012345678-90 (Bank of Kigali)' :
+                    '+250 788 123 456'
+                  }
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 font-bold text-slate-900 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 font-bold text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Withdrawal Amount (RWF):</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Withdrawal Amount (RWF):</label>
                 <input
                   type="number"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   step="1000"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 font-extrabold text-slate-900 text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 font-extrabold text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
                 />
               </div>
 
+              {isCrypto && (
+                <div className={`p-3.5 rounded-2xl border text-xs space-y-1.5 ${isTrc20 ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60' : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/60'}`}>
+                  <div className="flex items-center justify-between font-bold">
+                    <span className={isTrc20 ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}>
+                      🪙 {isTrc20 ? 'TRON TRC-20 Network' : 'BNB Smart Chain (BEP-20)'}
+                    </span>
+                    <span className="text-emerald-600 dark:text-emerald-400 text-[11px] font-extrabold">⚡ 0 Gas Fee (Sponsored)</span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-700 dark:text-slate-300 font-medium">
+                    <span>Estimated USDT Payout:</span>
+                    <span className="font-black text-sm text-slate-900 dark:text-white">≈ {estimatedUsdt} USDT</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                    Calculated at 1 USD ≈ 1,450 RWF. Direct on-chain settlement upon admin approval.
+                  </div>
+                </div>
+              )}
+
               <button
-                onClick={() => onSubmitWithdraw(phone, amount)}
-                className="w-full bg-[#001A40] hover:bg-[#05285D] text-amber-400 font-extrabold py-3 rounded-xl shadow transition-all text-sm"
+                onClick={() => onSubmitWithdraw(phone, amount, selectedMethod)}
+                className="w-full bg-[#001A40] hover:bg-[#05285D] dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300 text-amber-400 font-extrabold py-3 rounded-xl shadow transition-all text-sm flex items-center justify-center gap-2"
               >
-                Submit MoMo Withdrawal
+                <span>{isCrypto ? 'Submit USDT Withdrawal 🪙' : 'Submit Withdrawal Request ⬆️'}</span>
               </button>
             </div>
           </div>
 
-          <div className="lg:col-span-2 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-md space-y-4">
+          <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-md space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h3 className="text-xl font-extrabold text-slate-900">Withdrawal History</h3>
-                <p className="text-xs text-slate-500 font-medium">Recent payouts processed via the liquidity reserve</p>
+                <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Withdrawal History</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Recent payouts processed via the liquidity reserve</p>
               </div>
-              <span className="text-[11px] font-bold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+              <span className="text-[11px] font-bold text-slate-500 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full">
                 {withdrawals.length} Total Requests
               </span>
             </div>
 
             {/* Withdrawal Verification Guide with StatusIndicator */}
-            <div className="bg-slate-50 rounded-xl p-3 border border-slate-200 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+            <div className="bg-slate-50 dark:bg-slate-950/60 rounded-xl p-3 border border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[11px]">
               <span className="font-bold text-slate-400 uppercase text-[10px]">Verification States:</span>
               <div className="flex flex-wrap items-center gap-2.5">
                 <StatusIndicator status="Processing" text="⏳ Processing (1-10m)" />
@@ -977,28 +1624,80 @@
                 const isApproved = w.status === 'APPROVED' || w.status === 'COMPLETED';
                 const isPending = w.status === 'PENDING';
                 const currentStatus = isApproved ? 'Completed' : isPending ? 'Processing' : 'Flagged';
+                const isCryptoItem = (w.method || '').includes('USDT');
+
+                const handleDownloadReceipt = () => {
+                  const receiptText = [
+                    '============================================================',
+                    '              FUTURE SMART CAPITAL',
+                    '          OFFICIAL WITHDRAWAL PROOF OF RECEIPT',
+                    '============================================================',
+                    `Transaction Reference : ${w.id}`,
+                    `Request Timestamp     : ${w.time || 'Recent'}`,
+                    `Disbursement Status   : ${currentStatus.toUpperCase()} (${w.status})`,
+                    `Processed Time        : ${isApproved ? 'DISBURSED' : 'PENDING'}`,
+                    '',
+                    '------------------- PAYMENT BREAKDOWN ----------------------',
+                    `Payout Destination    : ${w.method || 'MTN Mobile Money'}`,
+                    isCryptoItem ? `Recipient Wallet Addr : ${w.phone}` : `Recipient Account     : ${w.phone}`,
+                    `Gross Withdrawal      : ${formatMoney(w.amount)}`,
+                    isCryptoItem ? `Crypto Equivalent(Est): ~ ${(w.amount / 1450).toFixed(2)} USDT (@ 1 USD ≈ 1,450 RWF)` : '',
+                    isCryptoItem ? 'Network Gas Fee (USDT): 0 USDT (Treasury Sponsored)' : '',
+                    'Processing Fee        : 0 RWF (FREE)',
+                    `Net Disbursed Amount  : ${formatMoney(w.amount)}`,
+                    '',
+                    '------------------ SECURITY & LIQUIDITY --------------------',
+                    'Liquidity Reserve     : Backed by 20,000,000 RWF Capital Fund',
+                    'Platform Merchant Code: 1799283',
+                    'Helpline / WhatsApp   : +250 792 828 727',
+                    'Support Email         : support@futuresmartcapital.rw',
+                    '',
+                    '============================================================',
+                    'This receipt serves as official proof of payout transaction',
+                    'from FUTURE SMART CAPITAL. Keep this record for your audit.',
+                    '============================================================'
+                  ].filter(Boolean).join('\n');
+
+                  const blob = new Blob([receiptText], { type: 'text/plain;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `SFC_Withdrawal_Receipt_${w.id}.txt`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+                  showToast(`📄 Downloaded receipt for Withdrawal #${w.id}!`);
+                };
 
                 return (
-                  <div key={w.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                  <div key={w.id} className="p-4 bg-slate-50 dark:bg-slate-950/60 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <StatusIndicator mode="icon" status={currentStatus} />
                         <div>
-                          <div className="font-black text-base text-slate-900">
+                          <div className="font-black text-base text-slate-900 dark:text-white">
                             -{formatMoney(w.amount)}
                           </div>
-                          <div className="text-xs text-slate-500 font-medium">
-                            To: <span className="font-bold text-slate-700">{w.phone}</span> • {w.time}
+                          <div className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                            To: <span className="font-bold text-slate-700 dark:text-slate-200">{w.phone}</span> • {w.time}
                           </div>
                         </div>
                       </div>
 
-                      <div className="text-right">
+                      <div className="text-right flex flex-col items-end gap-1.5">
                         <StatusIndicator status={currentStatus} />
+                        <button
+                          onClick={handleDownloadReceipt}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 px-2.5 py-1 rounded-lg transition-colors shadow-xs"
+                          title="Download proof of receipt text summary"
+                        >
+                          <span>📄 Receipt</span>
+                        </button>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-between text-[11px] pt-2 border-t border-slate-200 text-slate-500">
+                    <div className="flex items-center justify-between text-[11px] pt-2 border-t border-slate-200 dark:border-slate-800/80 text-slate-500">
                       <span className="font-semibold">
                         {isApproved ? '⚡ Disbursed successfully to recipient mobile wallet' :
                          isPending ? '⚡ Queued for instant automated network disbursement' :
@@ -1016,70 +1715,504 @@
     }
 
     // ADMIN HUB VIEW
-    function AdminHubView({ reserveFund, onUpdateReserve, deposits, withdrawals, cycles, formatMoney, announcements, onAddAnnouncement }) {
+    function AdminHubView({ reserveFund, onUpdateReserve, deposits, withdrawals, cycles, formatMoney, announcements, onAddAnnouncement, onUpdateDepositStatus, onUpdateWithdrawalStatus }) {
       const [newReserve, setNewReserve] = useState(reserveFund);
       const [annTitle, setAnnTitle] = useState('');
       const [annContent, setAnnContent] = useState('');
+      const [annImageUrl, setAnnImageUrl] = useState('');
+      const [annCategory, setAnnCategory] = useState('NEWS');
+      const [annUrgent, setAnnUrgent] = useState(false);
+
+      const [auditFilter, setAuditFilter] = useState('ALL');
+      const [auditSearch, setAuditSearch] = useState('');
+
+      const PRESET_IMAGES = [
+        { label: '📈 50% Profit', url: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=800&q=80' },
+        { label: '🛡️ 20M Reserve', url: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&w=800&q=80' },
+        { label: '📱 MoMo Code', url: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=800&q=80' },
+        { label: '🎉 Special Bonus', url: 'https://images.unsplash.com/photo-1553729459-efe14ef6055d?auto=format&fit=crop&w=800&q=80' }
+      ];
+
+      // Combine deposits & withdrawals into unified audit list
+      const auditRecords = useMemo(() => {
+        const depList = deposits.map(d => ({
+          id: d.id,
+          type: 'DEPOSIT',
+          phone: d.phone,
+          amount: d.amount,
+          status: d.status,
+          time: d.time || '1 day ago',
+          momoTxId: d.momoTxId || 'Direct MoMo 1799283'
+        }));
+        const withList = withdrawals.map(w => ({
+          id: w.id,
+          type: 'WITHDRAWAL',
+          phone: w.phone,
+          amount: w.amount,
+          status: w.status,
+          time: w.time || '4 hours ago',
+          momoTxId: w.method || 'MTN Mobile Money'
+        }));
+        return [...depList, ...withList];
+      }, [deposits, withdrawals]);
+
+      const filteredAudits = useMemo(() => {
+        return auditRecords.filter(item => {
+          const matchSearch = auditSearch === '' ||
+            item.id.toLowerCase().includes(auditSearch.toLowerCase()) ||
+            item.phone.toLowerCase().includes(auditSearch.toLowerCase()) ||
+            item.momoTxId.toLowerCase().includes(auditSearch.toLowerCase()) ||
+            item.amount.toString().includes(auditSearch);
+
+          const matchFilter = auditFilter === 'ALL' ||
+            (auditFilter === 'DEPOSIT' && item.type === 'DEPOSIT') ||
+            (auditFilter === 'WITHDRAWAL' && item.type === 'WITHDRAWAL') ||
+            (auditFilter === 'FLAGGED' && item.status === 'REJECTED') ||
+            (auditFilter === 'COMPLETED' && (item.status === 'APPROVED' || item.status === 'COMPLETED')) ||
+            (auditFilter === 'PENDING' && item.status === 'PENDING');
+
+          return matchSearch && matchFilter;
+        });
+      }, [auditRecords, auditFilter, auditSearch]);
+
+      const handleToggleStatus = (record, newStatus) => {
+        if (record.type === 'DEPOSIT') {
+          if (onUpdateDepositStatus) onUpdateDepositStatus(record.id, newStatus);
+        } else {
+          if (onUpdateWithdrawalStatus) onUpdateWithdrawalStatus(record.id, newStatus);
+        }
+      };
 
       return (
         <div className="space-y-8">
           <div>
-            <h2 className="text-2xl font-extrabold text-slate-900">Admin Control Hub</h2>
-            <p className="text-xs sm:text-sm text-slate-500 font-medium">Manage platform reserves, announcements, and transaction auditing</p>
+            <h2 className="text-2xl font-extrabold text-slate-900 dark:text-white">Admin Control Hub</h2>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium">Manage platform reserves, announcements with images, and transaction auditing</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Reserve Fund Controller */}
-            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
-              <div className="text-xs font-extrabold text-slate-400 uppercase">Capital Reserve Pool</div>
-              <div className="text-2xl font-black text-[#001A40]">{formatMoney(reserveFund)}</div>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+              <div className="text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase">Capital Reserve Pool</div>
+              <div className="text-2xl font-black text-[#001A40] dark:text-amber-400">{formatMoney(reserveFund)}</div>
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Update Reserve (RWF):</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Update Reserve (RWF):</label>
                 <input
                   type="number"
                   value={newReserve}
                   onChange={(e) => setNewReserve(Number(e.target.value))}
-                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold"
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-slate-900 dark:text-white"
                 />
               </div>
               <button
                 onClick={() => onUpdateReserve(newReserve)}
-                className="w-full bg-amber-400 text-slate-950 font-extrabold py-2 rounded-xl text-xs hover:bg-amber-300"
+                className="w-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-extrabold py-2 rounded-xl text-xs transition-colors"
               >
                 Save Reserve Pool
               </button>
             </div>
 
-            {/* Platform Broadcast */}
-            <div className="md:col-span-2 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
-              <div className="text-xs font-extrabold text-slate-400 uppercase">Broadcast System Announcement</div>
+            {/* Platform Broadcast With Image */}
+            <div className="md:col-span-2 bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase">Broadcast Announcement (with Image)</div>
+                <span className="text-[10px] font-bold bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full">Shown in Website Header</span>
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <input
                   type="text"
-                  placeholder="Announcement Title"
+                  placeholder="Announcement Title *"
                   value={annTitle}
                   onChange={(e) => setAnnTitle(e.target.value)}
-                  className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-bold"
+                  className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold text-slate-900 dark:text-white"
                 />
                 <input
                   type="text"
-                  placeholder="Announcement Details"
-                  value={annContent}
-                  onChange={(e) => setAnnContent(e.target.value)}
-                  className="bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-sm font-medium"
+                  placeholder="Announcement Image URL (Optional)"
+                  value={annImageUrl}
+                  onChange={(e) => setAnnImageUrl(e.target.value)}
+                  className="bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-medium text-slate-900 dark:text-white"
                 />
               </div>
+
+              {/* Preset Image Options */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Preset Banners:</span>
+                {PRESET_IMAGES.map((img, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setAnnImageUrl(img.url)}
+                    className="text-[10px] font-bold px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-amber-100 dark:hover:bg-amber-900/40 hover:text-amber-900 dark:hover:text-amber-300 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-all"
+                  >
+                    {img.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Live Preview If Image Present */}
+              {annImageUrl && (
+                <div className="relative h-28 w-full rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800">
+                  <img src={annImageUrl} alt="Preview" className="w-full h-full object-cover" />
+                  <span className="absolute top-2 left-2 bg-black/60 text-white text-[10px] font-bold px-2 py-0.5 rounded">
+                    Image Preview
+                  </span>
+                  <button
+                    onClick={() => setAnnImageUrl('')}
+                    className="absolute top-2 right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-0.5 rounded hover:bg-red-700"
+                  >
+                    ✕ Remove
+                  </button>
+                </div>
+              )}
+
+              <textarea
+                rows="2"
+                placeholder="Announcement Details / Message *"
+                value={annContent}
+                onChange={(e) => setAnnContent(e.target.value)}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-medium text-slate-900 dark:text-white"
+              ></textarea>
+
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-2">
+                  <select
+                    value={annCategory}
+                    onChange={(e) => setAnnCategory(e.target.value)}
+                    className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-bold px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700"
+                  >
+                    <option value="NEWS">NEWS</option>
+                    <option value="IMPORTANT">IMPORTANT</option>
+                    <option value="PROMO">PROMO</option>
+                  </select>
+
+                  <label className="flex items-center gap-1 text-xs font-semibold text-slate-700 dark:text-slate-300 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={annUrgent}
+                      onChange={(e) => setAnnUrgent(e.target.checked)}
+                      className="rounded text-amber-500 focus:ring-amber-400"
+                    />
+                    <span>Priority Urgent</span>
+                  </label>
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (annTitle.trim() && annContent.trim()) {
+                      onAddAnnouncement({
+                        id: Date.now().toString(),
+                        title: annTitle,
+                        content: annContent,
+                        category: annCategory,
+                        imageUrl: annImageUrl.trim() || null,
+                        time: 'Just now',
+                        urgent: annUrgent
+                      });
+                      setAnnTitle('');
+                      setAnnContent('');
+                      setAnnImageUrl('');
+                    }
+                  }}
+                  className="bg-[#001A40] text-amber-400 dark:bg-amber-400 dark:text-slate-950 font-extrabold px-5 py-2 rounded-xl text-xs hover:bg-[#05285D] dark:hover:bg-amber-300 transition-all shadow"
+                >
+                  Publish Announcement 📢
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Active Announcements List */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+            <h3 className="text-base font-extrabold text-slate-900 dark:text-white">Active Header Announcements ({announcements.length})</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+              {announcements.map((a) => (
+                <div key={a.id} className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-50 dark:bg-slate-950/60 flex flex-col">
+                  {a.imageUrl && (
+                    <div className="h-28 w-full overflow-hidden bg-slate-200 dark:bg-slate-800">
+                      <img src={a.imageUrl} alt={a.title} className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  <div className="p-3 flex-1 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded uppercase ${a.urgent ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300' : 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300'}`}>
+                          {a.category || 'NEWS'}
+                        </span>
+                        <span className="text-[10px] text-slate-400">{a.time || 'Recent'}</span>
+                      </div>
+                      <h4 className="font-extrabold text-xs text-slate-900 dark:text-white line-clamp-1">{a.title}</h4>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">{a.content}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* TRANSACTION AUDIT TABLE & STATUS TOGGLING */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>⚖️ Transaction Audit Table</span>
+                  <span className="bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 text-xs font-bold px-2.5 py-0.5 rounded-full">
+                    {auditRecords.length} Audited Logs
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Live ledger of all deposits & withdrawals. Admins can manually toggle statuses (Completed, Flagged, Pending).</p>
+              </div>
+
+              {/* Status Summary Badges */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-1.5 text-center">
+                  <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Completed</div>
+                  <div className="text-sm font-black text-emerald-700 dark:text-emerald-300">
+                    {auditRecords.filter(r => r.status === 'APPROVED' || r.status === 'COMPLETED').length}
+                  </div>
+                </div>
+
+                <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl px-3 py-1.5 text-center">
+                  <div className="text-[10px] font-bold text-red-600 dark:text-red-400">Flagged 🚩</div>
+                  <div className="text-sm font-black text-red-700 dark:text-red-300">
+                    {auditRecords.filter(r => r.status === 'REJECTED').length}
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-1.5 text-center">
+                  <div className="text-[10px] font-bold text-amber-600 dark:text-amber-400">Pending ⏳</div>
+                  <div className="text-sm font-black text-amber-700 dark:text-amber-300">
+                    {auditRecords.filter(r => r.status === 'PENDING').length}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter Chips & Search Bar */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+              <div className="relative w-full sm:w-72">
+                <input
+                  type="text"
+                  placeholder="Search by ID, Phone, Tx Ref..."
+                  value={auditSearch}
+                  onChange={(e) => setAuditSearch(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs font-semibold text-slate-900 dark:text-white"
+                />
+                <span className="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
+                {auditSearch && (
+                  <button onClick={() => setAuditSearch('')} className="absolute right-3 top-2 text-xs text-slate-400 hover:text-slate-600">✕</button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+                {[
+                  { key: 'ALL', label: `All (${auditRecords.length})` },
+                  { key: 'DEPOSIT', label: 'Deposits 📥' },
+                  { key: 'WITHDRAWAL', label: 'Withdrawals 📤' },
+                  { key: 'FLAGGED', label: 'Flagged 🚩' },
+                  { key: 'COMPLETED', label: 'Completed ✅' },
+                  { key: 'PENDING', label: 'Pending ⏳' }
+                ].map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setAuditFilter(tab.key)}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all border ${auditFilter === tab.key ? 'bg-[#001A40] text-amber-400 dark:bg-amber-400 dark:text-slate-950 border-transparent shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200'}`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Audit Table */}
+            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 uppercase font-black text-[10px]">
+                    <th className="py-3 px-4">Type & Ref</th>
+                    <th className="py-3 px-4">User Account</th>
+                    <th className="py-3 px-4">Amount</th>
+                    <th className="py-3 px-4">Timestamp</th>
+                    <th className="py-3 px-4">Current Status</th>
+                    <th className="py-3 px-4 text-right">Manual Admin Toggle</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {filteredAudits.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="py-8 text-center text-slate-400 dark:text-slate-500 font-medium">
+                        No transactions found matching your audit filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAudits.map((rec) => {
+                      const isDeposit = rec.type === 'DEPOSIT';
+                      const isFlagged = rec.status === 'REJECTED';
+                      const isCompleted = rec.status === 'APPROVED' || rec.status === 'COMPLETED';
+                      const isPending = rec.status === 'PENDING';
+
+                      return (
+                        <tr key={rec.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase ${isDeposit ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300' : 'bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300'}`}>
+                                {isDeposit ? '📥 DEPOSIT' : '📤 WITHDRAW'}
+                              </span>
+                              <span className="font-mono text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                                {rec.id}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-slate-400 mt-0.5">
+                              Ref: {rec.momoTxId}
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4 font-bold text-slate-700 dark:text-slate-300">
+                            {rec.phone}
+                          </td>
+
+                          <td className="py-3.5 px-4 font-black text-sm text-slate-900 dark:text-white">
+                            <span className={isDeposit ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}>
+                              {isDeposit ? '+' : '-'} {formatMoney(rec.amount)}
+                            </span>
+                          </td>
+
+                          <td className="py-3.5 px-4 text-[11px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
+                            ⏱️ {rec.time}
+                          </td>
+
+                          <td className="py-3.5 px-4">
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase ${isCompleted ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' : isFlagged ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300' : 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'}`}>
+                              {isCompleted ? '✅ COMPLETED' : isFlagged ? '🚩 FLAGGED' : '⏳ PENDING'}
+                            </span>
+                          </td>
+
+                          <td className="py-3.5 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {!isCompleted && (
+                                <button
+                                  onClick={() => handleToggleStatus(rec, 'APPROVED')}
+                                  title="Mark as Completed"
+                                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg transition-colors shadow-sm"
+                                >
+                                  Complete ✅
+                                </button>
+                              )}
+
+                              {!isFlagged && (
+                                <button
+                                  onClick={() => handleToggleStatus(rec, 'REJECTED')}
+                                  title="Mark as Flagged"
+                                  className="bg-red-600 hover:bg-red-500 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg transition-colors shadow-sm"
+                                >
+                                  Flag 🚩
+                                </button>
+                              )}
+
+                              {!isPending && (
+                                <button
+                                  onClick={() => handleToggleStatus(rec, 'PENDING')}
+                                  title="Mark as Pending"
+                                  className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-[10px] font-bold px-2 py-1 rounded-lg transition-colors"
+                                >
+                                  Pending ⏳
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ANNOUNCEMENTS & NOTIFICATIONS MODAL
+    function AnnouncementsModal({ announcements, onClose, onDeleteAnnouncement }) {
+      return (
+        <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-800 relative animate-in fade-in zoom-in duration-200 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-900 dark:text-amber-300 flex items-center justify-center font-bold text-xl">
+                  📢
+                </div>
+                <div>
+                  <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Notifications & Announcements</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">SMART FUTURE CAPITAL (SFC) official updates</p>
+                </div>
+              </div>
+
               <button
-                onClick={() => {
-                  if (annTitle) {
-                    onAddAnnouncement({ id: Date.now().toString(), title: annTitle, content: annContent, urgent: false });
-                    setAnnTitle('');
-                    setAnnContent('');
-                  }
-                }}
-                className="bg-[#001A40] text-amber-400 font-extrabold px-5 py-2 rounded-xl text-xs hover:bg-[#05285D]"
+                onClick={onClose}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold text-xl p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
               >
-                Publish Announcement
+                ✕
+              </button>
+            </div>
+
+            <div className="overflow-y-auto custom-scrollbar py-4 space-y-4 flex-1">
+              {announcements.length === 0 ? (
+                <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-sm font-semibold">
+                  No active announcements at this time.
+                </div>
+              ) : (
+                announcements.map((a) => (
+                  <div
+                    key={a.id}
+                    className={`rounded-2xl border overflow-hidden transition-all ${a.urgent ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800' : 'bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800'}`}
+                  >
+                    {/* Announcement Image */}
+                    {a.imageUrl && (
+                      <div className="h-44 sm:h-52 w-full overflow-hidden bg-slate-200 dark:bg-slate-800 relative">
+                        <img
+                          src={a.imageUrl}
+                          alt={a.title}
+                          className="w-full h-full object-cover hover:scale-105 transition-all duration-300"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-transparent flex items-end p-4">
+                          <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full text-white shadow ${a.urgent ? 'bg-red-600' : 'bg-blue-600'}`}>
+                            {a.category || 'NEWS'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="p-4 sm:p-5">
+                      {!a.imageUrl && (
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${a.urgent ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300' : 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300'}`}>
+                            {a.category || 'NEWS'}
+                          </span>
+                          <span className="text-[10px] text-slate-400 font-bold">{a.time || 'Recent'}</span>
+                        </div>
+                      )}
+
+                      <h4 className="text-base font-extrabold text-slate-900 dark:text-white leading-snug">{a.title}</h4>
+                      <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-2 font-medium leading-relaxed">{a.content}</p>
+
+                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200/60 dark:border-slate-800 text-[11px] text-slate-400 font-semibold">
+                        <span>Official SFC System Broadcast</span>
+                        <span>{a.time || 'Live'}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                onClick={onClose}
+                className="w-full bg-[#001A40] hover:bg-[#05285D] dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300 text-amber-400 font-extrabold py-3 rounded-xl shadow transition-all text-sm"
+              >
+                Close Announcements
               </button>
             </div>
           </div>
@@ -1092,19 +2225,22 @@
       const [phone, setPhone] = useState('+250 788 123 456');
       const [amount, setAmount] = useState(tier.minAmount);
       const [txId, setTxId] = useState('');
-      const [paymentMethod, setPaymentMethod] = useState('momo');
-      const [momoSubTab, setMomoSubTab] = useState('push');
+      const [paymentMethod, setPaymentMethod] = useState('momo'); // 'momo', 'airtel', 'card', 'bank', 'crypto'
+      const [momoSubTab, setMomoSubTab] = useState('push'); // 'push', 'qr', 'manual'
       
+      // Card details state
       const [cardNumber, setCardNumber] = useState('');
       const [cardExpiry, setCardExpiry] = useState('');
       const [cardCvc, setCardCvc] = useState('');
       const [cardHolder, setCardHolder] = useState('');
 
+      // Bank & Crypto state
       const [bankRef, setBankRef] = useState('');
       const [selectedBank, setSelectedBank] = useState('Bank of Kigali (BK)');
       const [cryptoNetwork, setCryptoNetwork] = useState('USDT-TRC20');
       const [cryptoTxHash, setCryptoTxHash] = useState('');
 
+      // Live processing states
       const [isProcessing, setIsProcessing] = useState(false);
       const [processStep, setProcessStep] = useState(1);
       const [copiedText, setCopiedText] = useState('');
@@ -1113,7 +2249,9 @@
       const ussdString = '*182*8*1*1799283#';
       const cryptoAddress = cryptoNetwork === 'USDT-TRC20' ? 'TXn98B2Q1s7xLkF2w6m5PzQ99104kLm89A' : '0x71C...4e8B';
       const qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent('tel:*182*8*1*1799283#')}&color=001A40&bgcolor=FFFFFF&margin=8`;
+      const cryptoQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(cryptoAddress)}&color=001A40&bgcolor=FFFFFF&margin=8`;
 
+      // Live Yield Calculation
       const rate = tier.rate || 0.02;
       const expectedProfit = Math.round(amount * rate);
       const totalPayout = amount + expectedProfit;
@@ -1145,8 +2283,17 @@
         setIsProcessing(true);
         setProcessStep(1);
 
-        setTimeout(() => setProcessStep(2), 1200);
-        setTimeout(() => setProcessStep(3), 2600);
+        // Step 1: Connecting
+        setTimeout(() => {
+          setProcessStep(2);
+        }, 1200);
+
+        // Step 2: Push authorization
+        setTimeout(() => {
+          setProcessStep(3);
+        }, 2600);
+
+        // Step 3: Verified & Activate
         setTimeout(() => {
           setProcessStep(4);
           setTimeout(() => {
@@ -1172,16 +2319,19 @@
 
       return (
         <div className="fixed inset-0 z-50 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 relative animate-in fade-in zoom-in duration-200 my-6">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl border border-slate-200 dark:border-slate-800 relative animate-in fade-in zoom-in duration-200 my-6">
+            
+            {/* Close Button */}
             {!isProcessing && (
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 font-bold text-lg p-2 rounded-full hover:bg-slate-100 transition-colors z-10"
+                className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 font-bold text-lg p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors z-10"
               >
                 ✕
               </button>
             )}
 
+            {/* LIVE PROCESSING SCREEN */}
             {isProcessing ? (
               <div className="py-8 px-4 text-center space-y-6 animate-in fade-in">
                 <div className="relative w-24 h-24 mx-auto flex items-center justify-center">
@@ -1192,16 +2342,16 @@
                 </div>
 
                 <div className="space-y-2">
-                  <span className="text-xs font-black uppercase tracking-widest text-amber-600 bg-amber-100 px-3 py-1 rounded-full border border-amber-300">
+                  <span className="text-xs font-black uppercase tracking-widest text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/60 px-3 py-1 rounded-full border border-amber-300 dark:border-amber-700">
                     REAL-TIME PAYMENT GATEWAY
                   </span>
-                  <h3 className="text-xl font-black text-slate-900">
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white">
                     {processStep === 1 && 'Connecting to Payment Gateway...'}
                     {processStep === 2 && 'USSD Prompt Sent! Check Your Device...'}
                     {processStep === 3 && 'Authorizing & Verifying Liquidity Deposit...'}
                     {processStep === 4 && 'Payment Verified! Activating 3-Day Vault...'}
                   </h3>
-                  <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
                     {processStep === 1 && 'Establishing encrypted 256-bit SSL handshake with Rwandan telecom switch.'}
                     {processStep === 2 && `Please enter your Mobile Money PIN on ${phone} to authorize ${formatMoney(amount)}.`}
                     {processStep === 3 && 'Payment confirmed via merchant network. Minting 3-Day High Yield contract.'}
@@ -1209,6 +2359,7 @@
                   </p>
                 </div>
 
+                {/* Step Progress Dots */}
                 <div className="flex items-center justify-center gap-3">
                   {[1, 2, 3, 4].map((step) => (
                     <div
@@ -1216,7 +2367,7 @@
                       className={`h-2.5 rounded-full transition-all duration-500 ${
                         processStep >= step
                           ? 'w-8 bg-gradient-to-r from-emerald-500 to-amber-400'
-                          : 'w-2.5 bg-slate-200'
+                          : 'w-2.5 bg-slate-200 dark:bg-slate-700'
                       }`}
                     ></div>
                   ))}
@@ -1224,27 +2375,29 @@
               </div>
             ) : (
               <div className="space-y-5">
+                {/* Header */}
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-extrabold bg-amber-100 text-amber-800 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    <span className="text-[10px] font-extrabold bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-300 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                       ⚡ REAL PAYMENT DEPOSIT
                     </span>
-                    <span className="text-xs text-emerald-600 font-bold">+2.0% 72H Yield Guaranteed</span>
+                    <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">+2.0% 72H Yield Guaranteed</span>
                   </div>
-                  <h3 className="text-xl font-extrabold text-slate-900 mt-1">
+                  <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">
                     Deposit & Activate {tier.name}
                   </h3>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
                     Select your preferred instant payment method to fund your 3-day high-yield cycle.
                   </p>
                 </div>
 
-                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
+                {/* Amount Selection & Live Yield Calculator */}
+                <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-extrabold text-slate-700 uppercase tracking-wider">
+                    <label className="text-xs font-extrabold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
                       Deposit Amount (RWF):
                     </label>
-                    <span className="text-xs font-bold text-amber-600 font-mono">
+                    <span className="text-xs font-bold text-amber-600 dark:text-amber-400 font-mono">
                       Min: {formatMoney(tier.minAmount)}
                     </span>
                   </div>
@@ -1256,10 +2409,11 @@
                       onChange={(e) => setAmount(Math.max(1000, Number(e.target.value)))}
                       min={tier.minAmount}
                       step="1000"
-                      className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2 text-base font-black text-slate-900 focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                      className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 text-base font-black text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:outline-none"
                     />
                   </div>
 
+                  {/* Preset Amount Chips */}
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {[6000, 10000, 15000, 30000, 45000, 100000].map((preset) => (
                       <button
@@ -1269,7 +2423,7 @@
                         className={`text-[10px] font-bold px-2.5 py-1 rounded-lg border transition-all ${
                           amount === preset
                             ? 'bg-amber-400 text-slate-950 border-amber-400 font-black shadow-sm'
-                            : 'bg-white text-slate-600 border-slate-200 hover:border-amber-400'
+                            : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-amber-400'
                         }`}
                       >
                         {formatMoney(preset)}
@@ -1277,33 +2431,35 @@
                     ))}
                   </div>
 
-                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200 text-center text-xs">
-                    <div className="bg-white p-2 rounded-xl border border-slate-100">
+                  {/* Yield Breakdown Banner */}
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200 dark:border-slate-800/80 text-center text-xs">
+                    <div className="bg-white dark:bg-slate-900/90 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
                       <div className="text-[10px] text-slate-400 font-semibold">Profit (72h)</div>
-                      <div className="font-extrabold text-emerald-600 mt-0.5">+{formatMoney(expectedProfit)}</div>
+                      <div className="font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5">+{formatMoney(expectedProfit)}</div>
                     </div>
-                    <div className="bg-white p-2 rounded-xl border border-slate-100">
+                    <div className="bg-white dark:bg-slate-900/90 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
                       <div className="text-[10px] text-slate-400 font-semibold">Total Payout</div>
-                      <div className="font-black text-slate-900 mt-0.5">{formatMoney(totalPayout)}</div>
+                      <div className="font-black text-slate-900 dark:text-white mt-0.5">{formatMoney(totalPayout)}</div>
                     </div>
-                    <div className="bg-white p-2 rounded-xl border border-slate-100">
+                    <div className="bg-white dark:bg-slate-900/90 p-2 rounded-xl border border-slate-100 dark:border-slate-800">
                       <div className="text-[10px] text-slate-400 font-semibold">Hourly Velocity</div>
-                      <div className="font-extrabold text-amber-600 mt-0.5">+{profitPerHour} RWF/h</div>
+                      <div className="font-extrabold text-amber-600 dark:text-amber-400 mt-0.5">+{profitPerHour} RWF/h</div>
                     </div>
                   </div>
                 </div>
 
+                {/* PAYMENT METHOD SELECTOR */}
                 <div>
-                  <label className="block text-xs font-extrabold text-slate-700 mb-2 uppercase tracking-wider">
+                  <label className="block text-xs font-extrabold text-slate-700 dark:text-slate-300 mb-2 uppercase tracking-wider">
                     Select Payment Gateway:
                   </label>
                   <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                     {[
-                      { id: 'momo', label: 'MTN MoMo', icon: '📱' },
-                      { id: 'airtel', label: 'Airtel Money', icon: '📱' },
-                      { id: 'card', label: 'Bank Card', icon: '💳' },
-                      { id: 'bank', label: 'Bank Transfer', icon: '🏦' },
-                      { id: 'crypto', label: 'USDT Crypto', icon: '💎' }
+                      { id: 'momo', label: 'MTN MoMo', icon: '📱', color: 'border-yellow-400' },
+                      { id: 'airtel', label: 'Airtel Money', icon: '📱', color: 'border-red-400' },
+                      { id: 'card', label: 'Bank Card', icon: '💳', color: 'border-blue-400' },
+                      { id: 'bank', label: 'Bank Transfer', icon: '🏦', color: 'border-purple-400' },
+                      { id: 'crypto', label: 'USDT Crypto', icon: '💎', color: 'border-emerald-400' }
                     ].map((m) => (
                       <button
                         key={m.id}
@@ -1311,8 +2467,8 @@
                         onClick={() => setPaymentMethod(m.id)}
                         className={`p-2.5 rounded-2xl border text-center flex flex-col items-center justify-center gap-1 transition-all ${
                           paymentMethod === m.id
-                            ? 'bg-amber-400/20 border-amber-400 shadow-sm text-slate-900 font-black'
-                            : 'bg-slate-50 border-slate-200 text-slate-600 hover:border-slate-400'
+                            ? 'bg-amber-400/15 border-amber-400 shadow-sm text-slate-900 dark:text-white font-black'
+                            : 'bg-slate-50 dark:bg-slate-950/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-400'
                         }`}
                       >
                         <span className="text-xl">{m.icon}</span>
@@ -1322,14 +2478,18 @@
                   </div>
                 </div>
 
+                {/* PAYMENT METHOD DETAILS */}
+
+                {/* 1. MTN MoMo */}
                 {paymentMethod === 'momo' && (
                   <div className="bg-amber-500/10 border-2 border-amber-400/60 rounded-2xl p-4 space-y-4">
-                    <div className="grid grid-cols-3 gap-1.5 bg-amber-200/50 p-1 rounded-xl">
+                    {/* MTN Sub-mode tabs */}
+                    <div className="grid grid-cols-3 gap-1.5 bg-amber-200/50 dark:bg-amber-950/60 p-1 rounded-xl">
                       <button
                         type="button"
                         onClick={() => setMomoSubTab('push')}
                         className={`py-1.5 text-[11px] font-extrabold rounded-lg transition-all ${
-                          momoSubTab === 'push' ? 'bg-amber-400 text-slate-950 shadow-sm font-black' : 'text-slate-700'
+                          momoSubTab === 'push' ? 'bg-amber-400 text-slate-950 shadow-sm font-black' : 'text-slate-700 dark:text-slate-300'
                         }`}
                       >
                         ⚡ Instant Push
@@ -1338,7 +2498,7 @@
                         type="button"
                         onClick={() => setMomoSubTab('qr')}
                         className={`py-1.5 text-[11px] font-extrabold rounded-lg transition-all ${
-                          momoSubTab === 'qr' ? 'bg-amber-400 text-slate-950 shadow-sm font-black' : 'text-slate-700'
+                          momoSubTab === 'qr' ? 'bg-amber-400 text-slate-950 shadow-sm font-black' : 'text-slate-700 dark:text-slate-300'
                         }`}
                       >
                         📷 Scan QR
@@ -1347,7 +2507,7 @@
                         type="button"
                         onClick={() => setMomoSubTab('manual')}
                         className={`py-1.5 text-[11px] font-extrabold rounded-lg transition-all ${
-                          momoSubTab === 'manual' ? 'bg-amber-400 text-slate-950 shadow-sm font-black' : 'text-slate-700'
+                          momoSubTab === 'manual' ? 'bg-amber-400 text-slate-950 shadow-sm font-black' : 'text-slate-700 dark:text-slate-300'
                         }`}
                       >
                         🔢 USSD Code
@@ -1357,13 +2517,13 @@
                     {momoSubTab === 'push' && (
                       <div className="space-y-3">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="font-bold text-amber-900">Instant MTN MoMo Prompt:</span>
-                          <span className="font-black text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                          <span className="font-bold text-amber-900 dark:text-amber-300">Instant MTN MoMo Prompt:</span>
+                          <span className="font-black text-[10px] bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full">
                             Auto-Approve Supported
                           </span>
                         </div>
                         <div>
-                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                             Your MTN Rwanda Number:
                           </label>
                           <input
@@ -1371,10 +2531,10 @@
                             placeholder="+250 788 123 456"
                             value={phone}
                             onChange={(e) => setPhone(e.target.value)}
-                            className="w-full bg-white border border-amber-300 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-amber-400 focus:outline-none"
+                            className="w-full bg-white dark:bg-slate-900 border border-amber-300 dark:border-amber-700/80 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-amber-400 focus:outline-none"
                           />
                         </div>
-                        <p className="text-[11px] text-slate-600 leading-relaxed">
+                        <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
                           A direct USSD payment prompt of <b>{formatMoney(amount)}</b> will appear immediately on your handset.
                         </p>
                       </div>
@@ -1388,7 +2548,7 @@
                             Merchant ID: 1799283
                           </div>
                         </div>
-                        <p className="text-xs text-slate-600">
+                        <p className="text-xs text-slate-600 dark:text-slate-300">
                           Scan with your MoMo App or phone camera to deposit directly.
                         </p>
                         <div className="flex gap-2 w-full">
@@ -1402,7 +2562,7 @@
                           <button
                             type="button"
                             onClick={() => copyToClipboard(merchantCode, 'merchant')}
-                            className="flex-1 bg-slate-200 text-slate-800 py-2 rounded-xl text-xs font-extrabold"
+                            className="flex-1 bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 py-2 rounded-xl text-xs font-extrabold"
                           >
                             {copiedText === 'merchant' ? '✅ Copied!' : '📋 Copy ID (1799283)'}
                           </button>
@@ -1412,8 +2572,8 @@
 
                     {momoSubTab === 'manual' && (
                       <div className="space-y-3 text-xs">
-                        <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-amber-300">
-                          <span className="text-lg font-black font-mono text-blue-900">
+                        <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-3 rounded-xl border border-amber-300 dark:border-amber-700">
+                          <span className="text-lg font-black font-mono text-blue-900 dark:text-amber-400">
                             *182*8*1*1799283#
                           </span>
                           <button
@@ -1424,12 +2584,12 @@
                             {copiedText === 'ussd' ? '✅ Copied' : '📋 Copy Code'}
                           </button>
                         </div>
-                        <div className="space-y-1 text-slate-600">
+                        <div className="space-y-1 text-slate-600 dark:text-slate-300">
                           <div>🏢 Merchant: <b>SMART FUTURE CAPITAL</b></div>
                           <div>🔢 Code: <b>1799283</b></div>
                         </div>
                         <div>
-                          <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                          <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                             MoMo SMS Transaction ID:
                           </label>
                           <input
@@ -1437,7 +2597,7 @@
                             placeholder="e.g. TXN89327110 or 12389102"
                             value={txId}
                             onChange={(e) => setTxId(e.target.value)}
-                            className="w-full bg-white border border-slate-300 rounded-xl px-4 py-2 font-mono text-xs font-bold text-slate-900"
+                            className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2 font-mono text-xs font-bold text-slate-900 dark:text-white"
                           />
                         </div>
                       </div>
@@ -1445,16 +2605,17 @@
                   </div>
                 )}
 
+                {/* 2. Airtel Money */}
                 {paymentMethod === 'airtel' && (
                   <div className="bg-red-500/10 border-2 border-red-400/60 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-red-900">Airtel Money Instant Gateway:</span>
-                      <span className="font-black text-[10px] bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
+                      <span className="font-bold text-red-900 dark:text-red-300">Airtel Money Instant Gateway:</span>
+                      <span className="font-black text-[10px] bg-red-100 dark:bg-red-900/60 text-red-800 dark:text-red-300 px-2 py-0.5 rounded-full">
                         Instant USSD
                       </span>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                         Your Airtel Phone Number:
                       </label>
                       <input
@@ -1462,27 +2623,28 @@
                         placeholder="+250 738 123 456"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        className="w-full bg-white border border-red-300 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-red-400 focus:outline-none"
+                        className="w-full bg-white dark:bg-slate-900 border border-red-300 dark:border-red-700/80 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 dark:text-white focus:ring-2 focus:ring-red-400 focus:outline-none"
                       />
                     </div>
-                    <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-red-200 text-xs">
-                      <span className="font-mono font-bold text-red-700">Dial *182*8*1*1799283#</span>
-                      <a href="tel:*182*8*1*1799283%23" className="text-red-600 font-bold underline">Dial Now ↗</a>
+                    <div className="flex items-center justify-between bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-red-200 dark:border-red-800 text-xs">
+                      <span className="font-mono font-bold text-red-700 dark:text-red-400">Dial *182*8*1*1799283#</span>
+                      <a href="tel:*182*8*1*1799283%23" className="text-red-600 dark:text-red-400 font-bold underline">Dial Now ↗</a>
                     </div>
                   </div>
                 )}
 
+                {/* 3. Credit / Debit Card */}
                 {paymentMethod === 'card' && (
                   <div className="bg-blue-500/10 border-2 border-blue-400/60 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-blue-900">💳 Card Checkout (Visa / Mastercard):</span>
-                      <span className="font-black text-[10px] bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">
+                      <span className="font-bold text-blue-900 dark:text-blue-300">💳 Card Checkout (Visa / Mastercard):</span>
+                      <span className="font-black text-[10px] bg-blue-100 dark:bg-blue-900/60 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full">
                         3D Secure 256-Bit
                       </span>
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                         Card Number:
                       </label>
                       <input
@@ -1490,13 +2652,13 @@
                         placeholder="4242 •••• •••• 4242"
                         value={cardNumber}
                         onChange={(e) => handleFormatCardNumber(e.target.value)}
-                        className="w-full bg-white border border-blue-300 rounded-xl px-4 py-2 text-sm font-mono font-bold text-slate-900"
+                        className="w-full bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700/80 rounded-xl px-4 py-2 text-sm font-mono font-bold text-slate-900 dark:text-white"
                       />
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                           Expiry (MM/YY):
                         </label>
                         <input
@@ -1504,11 +2666,11 @@
                           placeholder="MM/YY"
                           value={cardExpiry}
                           onChange={(e) => handleFormatExpiry(e.target.value)}
-                          className="w-full bg-white border border-blue-300 rounded-xl px-4 py-2 text-sm font-mono font-bold text-slate-900"
+                          className="w-full bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700/80 rounded-xl px-4 py-2 text-sm font-mono font-bold text-slate-900 dark:text-white"
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                        <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                           CVC / CVV:
                         </label>
                         <input
@@ -1517,13 +2679,13 @@
                           placeholder="123"
                           value={cardCvc}
                           onChange={(e) => setCardCvc(e.target.value.replace(/\D/g, ''))}
-                          className="w-full bg-white border border-blue-300 rounded-xl px-4 py-2 text-sm font-mono font-bold text-slate-900"
+                          className="w-full bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700/80 rounded-xl px-4 py-2 text-sm font-mono font-bold text-slate-900 dark:text-white"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                         Cardholder Name:
                       </label>
                       <input
@@ -1531,27 +2693,28 @@
                         placeholder="e.g. JOHN DOE"
                         value={cardHolder}
                         onChange={(e) => setCardHolder(e.target.value)}
-                        className="w-full bg-white border border-blue-300 rounded-xl px-4 py-2 text-sm font-bold text-slate-900 uppercase"
+                        className="w-full bg-white dark:bg-slate-900 border border-blue-300 dark:border-blue-700/80 rounded-xl px-4 py-2 text-sm font-bold text-slate-900 dark:text-white uppercase"
                       />
                     </div>
                   </div>
                 )}
 
+                {/* 4. Bank Transfer */}
                 {paymentMethod === 'bank' && (
                   <div className="bg-purple-500/10 border-2 border-purple-400/60 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-purple-900">🏦 Rwandan Bank Wire / Cash Deposit:</span>
-                      <span className="font-black text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full">
+                      <span className="font-bold text-purple-900 dark:text-purple-300">🏦 Rwandan Bank Wire / Cash Deposit:</span>
+                      <span className="font-black text-[10px] bg-purple-100 dark:bg-purple-900/60 text-purple-800 dark:text-purple-300 px-2 py-0.5 rounded-full">
                         Same-Day Credit
                       </span>
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">Select Bank:</label>
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">Select Bank:</label>
                       <select
                         value={selectedBank}
                         onChange={(e) => setSelectedBank(e.target.value)}
-                        className="w-full bg-white border border-purple-300 rounded-xl px-4 py-2 text-xs font-bold text-slate-900"
+                        className="w-full bg-white dark:bg-slate-900 border border-purple-300 dark:border-purple-700/80 rounded-xl px-4 py-2 text-xs font-bold text-slate-900 dark:text-white"
                       >
                         <option value="Bank of Kigali (BK)">Bank of Kigali (BK)</option>
                         <option value="BPR Bank Rwanda">BPR Bank Rwanda</option>
@@ -1560,15 +2723,15 @@
                       </select>
                     </div>
 
-                    <div className="bg-white p-3 rounded-xl border border-purple-200 text-xs space-y-1">
+                    <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-purple-200 dark:border-purple-800 text-xs space-y-1">
                       <div className="flex justify-between">
                         <span className="text-slate-500">Account Name:</span>
-                        <span className="font-extrabold text-slate-900">SMART FUTURE CAPITAL LTD</span>
+                        <span className="font-extrabold text-slate-900 dark:text-white">SMART FUTURE CAPITAL LTD</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-slate-500">Account No:</span>
                         <div className="flex items-center gap-1.5">
-                          <span className="font-mono font-black text-purple-700">00045-098234-88</span>
+                          <span className="font-mono font-black text-purple-700 dark:text-purple-400">00045-098234-88</span>
                           <button
                             type="button"
                             onClick={() => copyToClipboard('00045-098234-88', 'bankAcc')}
@@ -1581,7 +2744,7 @@
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                         Bank Deposit Slip / Reference Number:
                       </label>
                       <input
@@ -1589,17 +2752,18 @@
                         placeholder="e.g. BK-REF-902188"
                         value={bankRef}
                         onChange={(e) => setBankRef(e.target.value)}
-                        className="w-full bg-white border border-purple-300 rounded-xl px-4 py-2 font-mono text-xs font-bold text-slate-900"
+                        className="w-full bg-white dark:bg-slate-900 border border-purple-300 dark:border-purple-700/80 rounded-xl px-4 py-2 font-mono text-xs font-bold text-slate-900 dark:text-white"
                       />
                     </div>
                   </div>
                 )}
 
+                {/* 5. Crypto USDT */}
                 {paymentMethod === 'crypto' && (
                   <div className="bg-emerald-500/10 border-2 border-emerald-400/60 rounded-2xl p-4 space-y-3">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-emerald-900">💎 Crypto USDT Direct Deposit:</span>
-                      <span className="font-black text-[10px] bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                      <span className="font-bold text-emerald-900 dark:text-emerald-300">💎 Crypto USDT Direct Deposit:</span>
+                      <span className="font-black text-[10px] bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300 px-2 py-0.5 rounded-full">
                         ~{(amount / 1400).toFixed(2)} USDT
                       </span>
                     </div>
@@ -1613,7 +2777,7 @@
                           className={`flex-1 py-1.5 text-xs font-black rounded-lg border transition-all ${
                             cryptoNetwork === net
                               ? 'bg-emerald-500 text-white border-emerald-600 shadow'
-                              : 'bg-white text-slate-700 border-slate-300'
+                              : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700'
                           }`}
                         >
                           {net}
@@ -1621,8 +2785,8 @@
                       ))}
                     </div>
 
-                    <div className="bg-white p-3 rounded-xl border border-emerald-300 flex items-center justify-between gap-2 text-xs">
-                      <div className="truncate font-mono font-bold text-emerald-800">
+                    <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-emerald-300 dark:border-emerald-700 flex items-center justify-between gap-2 text-xs">
+                      <div className="truncate font-mono font-bold text-emerald-800 dark:text-emerald-300">
                         {cryptoAddress}
                       </div>
                       <button
@@ -1635,7 +2799,7 @@
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                      <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
                         Blockchain Tx Hash:
                       </label>
                       <input
@@ -1643,17 +2807,18 @@
                         placeholder="0x... or TRC20 Hash"
                         value={cryptoTxHash}
                         onChange={(e) => setCryptoTxHash(e.target.value)}
-                        className="w-full bg-white border border-emerald-300 rounded-xl px-4 py-2 font-mono text-xs font-bold text-slate-900"
+                        className="w-full bg-white dark:bg-slate-900 border border-emerald-300 dark:border-emerald-700 rounded-xl px-4 py-2 font-mono text-xs font-bold text-slate-900 dark:text-white"
                       />
                     </div>
                   </div>
                 )}
 
+                {/* Action Buttons */}
                 <div className="pt-2 flex gap-3">
                   <button
                     type="button"
                     onClick={onClose}
-                    className="w-1/3 py-3 rounded-xl border border-slate-200 font-bold text-xs sm:text-sm text-slate-600 hover:bg-slate-50 transition-colors"
+                    className="w-1/3 py-3 rounded-xl border border-slate-200 dark:border-slate-700 font-bold text-xs sm:text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                   >
                     Cancel
                   </button>

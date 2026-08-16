@@ -57,7 +57,10 @@ fun AdminPanelScreen(
     onPostAnnouncement: (title: String, content: String, category: String, isImportant: Boolean, imageUrl: String?) -> Unit = { _, _, _, _, _ -> },
     onDeleteAnnouncement: (String) -> Unit = {},
     onTogglePlatformLock: (isLocked: Boolean, notice: String) -> Unit = { _, _ -> },
-    onUpdateAdminReserveFund: (Double) -> Unit = {}
+    onUpdateAdminReserveFund: (Double) -> Unit = {},
+    onUpdateTransactionStatus: (txId: String, newStatus: TransactionStatus) -> Unit = { _, _ -> },
+    onToggleDepositStatus: (depositId: String, newStatus: TransactionStatus) -> Unit = { _, _ -> },
+    onToggleWithdrawalStatus: (withdrawalId: String, newStatus: TransactionStatus) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     var rateAStr by remember { mutableStateOf("%.2f".format((adminConfig?.rateTierA ?: 0.02) * 100)) }
@@ -78,6 +81,29 @@ fun AdminPanelScreen(
     var selectedUserForFunds by remember { mutableStateOf<UserEntity?>(null) }
     var showAddUserDialog by remember { mutableStateOf(false) }
     var selectedScreenshotForZoom by remember { mutableStateOf<String?>(null) }
+
+    var auditSearchQuery by remember { mutableStateOf("") }
+    var selectedAuditTab by remember { mutableStateOf("ALL") }
+    var selectedTxForOverride by remember { mutableStateOf<TransactionEntity?>(null) }
+
+    val filteredAuditTransactions = allTransactions.filter { tx ->
+        val matchesQuery = auditSearchQuery.isBlank() ||
+                tx.id.contains(auditSearchQuery, ignoreCase = true) ||
+                tx.userId.contains(auditSearchQuery, ignoreCase = true) ||
+                tx.description.contains(auditSearchQuery, ignoreCase = true) ||
+                "%,d".format(tx.amount.toInt()).contains(auditSearchQuery)
+
+        val matchesTab = when (selectedAuditTab) {
+            "DEPOSIT" -> tx.type == TransactionType.DEPOSIT
+            "WITHDRAWAL" -> tx.type == TransactionType.WITHDRAWAL
+            "FLAGGED" -> tx.status == TransactionStatus.REJECTED
+            "COMPLETED" -> tx.status == TransactionStatus.COMPLETED || tx.status == TransactionStatus.APPROVED
+            "PENDING" -> tx.status == TransactionStatus.PENDING || tx.status == TransactionStatus.LOCKED
+            else -> true
+        }
+
+        matchesQuery && matchesTab
+    }
 
     val filteredUsers = allUsers.filter {
         it.fullName.contains(userQuery, ignoreCase = true) ||
@@ -343,6 +369,130 @@ fun AdminPanelScreen(
                         modifier = Modifier.fillMaxWidth().testTag("confirm_create_user_btn")
                     ) {
                         Text(text = "Create ${selectedRole.name} Account 🎉", fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+    }
+
+    if (selectedTxForOverride != null) {
+        val tx = selectedTxForOverride!!
+        val dateFullStr = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(tx.timestamp))
+
+        Dialog(onDismissRequest = { selectedTxForOverride = null }) {
+            Card(
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = LightSurface),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(20.dp)
+                        .fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Audit Status Override ⚖️", fontWeight = FontWeight.Bold, fontSize = 16.sp, color = TextPrimary)
+                        IconButton(onClick = { selectedTxForOverride = null }) {
+                            Icon(Icons.Default.Close, contentDescription = "Close")
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = Color(0xFFF1F5F9),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("Type: ${tx.type.name}", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = BentoPrimaryBlue)
+                                Text("%,d RWF".format(tx.amount.toInt()), fontWeight = FontWeight.Black, fontSize = 14.sp, color = if (tx.type == TransactionType.WITHDRAWAL) RedDanger else GreenSuccess)
+                            }
+                            Text("Tx ID: ${tx.id}", fontSize = 11.sp, color = TextSecondary)
+                            Text("User ID: ${tx.userId}", fontSize = 11.sp, color = TextSecondary)
+                            Text("Timestamp: $dateFullStr", fontSize = 11.sp, color = TextSecondary)
+                            Text("Current Status: ${tx.status.name}", fontWeight = FontWeight.SemiBold, fontSize = 11.sp, color = TextPrimary)
+                            Text("Desc: ${tx.description}", fontSize = 11.sp, color = TextPrimary)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Select New Status to Apply:", fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextPrimary)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = {
+                                onUpdateTransactionStatus(tx.id, TransactionStatus.COMPLETED)
+                                selectedTxForOverride = null
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth().testTag("modal_set_completed_${tx.id}")
+                        ) {
+                            Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Mark as COMPLETED ✅", fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = {
+                                onUpdateTransactionStatus(tx.id, TransactionStatus.REJECTED)
+                                selectedTxForOverride = null
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = RedDanger),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth().testTag("modal_set_flagged_${tx.id}")
+                        ) {
+                            Icon(Icons.Default.Flag, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Mark as FLAGGED / REJECTED 🚩", fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = {
+                                onUpdateTransactionStatus(tx.id, TransactionStatus.PENDING)
+                                selectedTxForOverride = null
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = OrangeWarning),
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth().testTag("modal_set_pending_${tx.id}")
+                        ) {
+                            Icon(Icons.Default.HourglassTop, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Mark as PENDING ⏳", fontWeight = FontWeight.Bold)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                onUpdateTransactionStatus(tx.id, TransactionStatus.APPROVED)
+                                selectedTxForOverride = null
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth().testTag("modal_set_approved_${tx.id}")
+                        ) {
+                            Icon(Icons.Default.Verified, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Mark as APPROVED ✔️", fontWeight = FontWeight.Bold)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                onUpdateTransactionStatus(tx.id, TransactionStatus.LOCKED)
+                                selectedTxForOverride = null
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            modifier = Modifier.fillMaxWidth().testTag("modal_set_locked_${tx.id}")
+                        ) {
+                            Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Mark as LOCKED / MATURING ⚡", fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -1263,6 +1413,359 @@ fun AdminPanelScreen(
                                 Icon(Icons.Default.AddCard, contentDescription = null, modifier = Modifier.size(14.dp), tint = Color.White)
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("Add Funds 💵", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Transaction Audit Table Section
+        item {
+            Spacer(modifier = Modifier.height(12.dp))
+            Card(
+                modifier = Modifier.fillMaxWidth().testTag("transaction_audit_section"),
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(containerColor = BentoCardBg),
+                border = BorderStroke(1.dp, BentoBorder)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "Transaction Audit Table ⚖️",
+                                fontSize = 17.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary,
+                                letterSpacing = (-0.3).sp
+                            )
+                            Text(
+                                text = "Audit all deposits & withdrawals with live status override",
+                                fontSize = 11.sp,
+                                color = TextSecondary
+                            )
+                        }
+                        Surface(
+                            shape = CircleShape,
+                            color = BentoPrimaryBlue.copy(alpha = 0.12f)
+                        ) {
+                            Text(
+                                text = "${allTransactions.size} Records",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = BentoPrimaryBlue,
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    // Audit Metrics Counters
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            color = GreenSuccess.copy(alpha = 0.1f),
+                            border = BorderStroke(1.dp, GreenSuccess.copy(alpha = 0.25f))
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("Completed", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = GreenSuccess)
+                                Text(
+                                    "${allTransactions.count { it.status == TransactionStatus.COMPLETED || it.status == TransactionStatus.APPROVED }}",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = GreenSuccess
+                                )
+                            }
+                        }
+
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            color = RedDanger.copy(alpha = 0.1f),
+                            border = BorderStroke(1.dp, RedDanger.copy(alpha = 0.25f))
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("Flagged 🚩", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = RedDanger)
+                                Text(
+                                    "${allTransactions.count { it.status == TransactionStatus.REJECTED }}",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = RedDanger
+                                )
+                            }
+                        }
+
+                        Surface(
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp),
+                            color = OrangeWarning.copy(alpha = 0.1f),
+                            border = BorderStroke(1.dp, OrangeWarning.copy(alpha = 0.25f))
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("Pending ⏳", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = OrangeWarning)
+                                Text(
+                                    "${allTransactions.count { it.status == TransactionStatus.PENDING || it.status == TransactionStatus.LOCKED }}",
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = OrangeWarning
+                                )
+                            }
+                        }
+                    }
+
+                    // Search Input
+                    OutlinedTextField(
+                        value = auditSearchQuery,
+                        onValueChange = { auditSearchQuery = it },
+                        placeholder = { Text("Search by Tx ID, User, Amount, or Note...", fontSize = 12.sp, color = TextSecondary) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = BentoHeroText, modifier = Modifier.size(18.dp)) },
+                        trailingIcon = {
+                            if (auditSearchQuery.isNotBlank()) {
+                                IconButton(onClick = { auditSearchQuery = "" }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Clear", modifier = Modifier.size(16.dp))
+                                }
+                            }
+                        },
+                        shape = RoundedCornerShape(14.dp),
+                        modifier = Modifier.fillMaxWidth().testTag("audit_search_field"),
+                        singleLine = true,
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = BentoPrimaryBlue,
+                            unfocusedBorderColor = BentoBorder,
+                            focusedContainerColor = Color.White,
+                            unfocusedContainerColor = Color.White
+                        )
+                    )
+
+                    // Filter Chips Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        val filterTabs = listOf(
+                            "ALL" to "All (${allTransactions.size})",
+                            "DEPOSIT" to "Deposits 📥",
+                            "WITHDRAWAL" to "Withdrawals 📤",
+                            "FLAGGED" to "Flagged 🚩",
+                            "COMPLETED" to "Completed ✅",
+                            "PENDING" to "Pending ⏳"
+                        )
+
+                        filterTabs.forEach { (tabKey, label) ->
+                            val isSelected = selectedAuditTab == tabKey
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = if (isSelected) BentoPrimaryBlue else Color(0xFFF1F5F9),
+                                border = BorderStroke(1.dp, if (isSelected) BentoPrimaryBlue else BentoBorder),
+                                modifier = Modifier
+                                    .clickable { selectedAuditTab = tabKey }
+                                    .testTag("audit_tab_$tabKey")
+                            ) {
+                                Text(
+                                    text = label,
+                                    fontSize = 10.sp,
+                                    fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold,
+                                    color = if (isSelected) Color.White else TextPrimary,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (filteredAuditTransactions.isEmpty()) {
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = BentoCardBg),
+                    border = BorderStroke(1.dp, BentoBorder)
+                ) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                        Text(
+                            text = "No audit transactions found matching current filter/search.",
+                            fontSize = 12.sp,
+                            color = TextSecondary,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+        } else {
+            items(filteredAuditTransactions) { tx ->
+                val dateFull = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date(tx.timestamp))
+                val isDeposit = tx.type == TransactionType.DEPOSIT
+                val isWithdrawal = tx.type == TransactionType.WITHDRAWAL
+
+                Card(
+                    modifier = Modifier.fillMaxWidth().testTag("audit_row_${tx.id}"),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = BentoCardBg),
+                    border = BorderStroke(1.dp, BentoBorder)
+                ) {
+                    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        // Top Header: Type & Status
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = when (tx.type) {
+                                        TransactionType.DEPOSIT -> GreenSuccess.copy(alpha = 0.12f)
+                                        TransactionType.WITHDRAWAL -> RedDanger.copy(alpha = 0.12f)
+                                        TransactionType.CYCLE_REWARD -> Color(0xFF6366F1).copy(alpha = 0.12f)
+                                        TransactionType.ADMIN_ADJUSTMENT -> BentoPrimaryBlue.copy(alpha = 0.12f)
+                                        TransactionType.REFERRAL_BONUS, TransactionType.WELCOME_BONUS -> OrangeWarning.copy(alpha = 0.12f)
+                                    }
+                                ) {
+                                    Text(
+                                        text = when (tx.type) {
+                                            TransactionType.DEPOSIT -> "📥 DEPOSIT"
+                                            TransactionType.WITHDRAWAL -> "📤 WITHDRAWAL"
+                                            TransactionType.CYCLE_REWARD -> "⚡ YIELD REWARD"
+                                            TransactionType.ADMIN_ADJUSTMENT -> "⚙️ ADJUSTMENT"
+                                            TransactionType.REFERRAL_BONUS -> "👥 REFERRAL BONUS"
+                                            TransactionType.WELCOME_BONUS -> "🎁 WELCOME BONUS"
+                                        },
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = when (tx.type) {
+                                            TransactionType.DEPOSIT -> GreenSuccess
+                                            TransactionType.WITHDRAWAL -> RedDanger
+                                            TransactionType.CYCLE_REWARD -> Color(0xFF6366F1)
+                                            TransactionType.ADMIN_ADJUSTMENT -> BentoPrimaryBlue
+                                            TransactionType.REFERRAL_BONUS, TransactionType.WELCOME_BONUS -> OrangeWarning
+                                        },
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                    )
+                                }
+
+                                Text(
+                                    text = "${if (isDeposit) "+" else if (isWithdrawal) "-" else ""} %,d RWF".format(tx.amount.toInt()),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = if (isDeposit) GreenSuccess else if (isWithdrawal) RedDanger else BentoHeroText
+                                )
+                            }
+
+                            // Status Pill
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = when (tx.status) {
+                                    TransactionStatus.COMPLETED, TransactionStatus.APPROVED -> GreenSuccess.copy(alpha = 0.15f)
+                                    TransactionStatus.REJECTED -> RedDanger.copy(alpha = 0.15f)
+                                    TransactionStatus.PENDING -> OrangeWarning.copy(alpha = 0.15f)
+                                    TransactionStatus.LOCKED -> Color(0xFF6366F1).copy(alpha = 0.15f)
+                                }
+                            ) {
+                                Text(
+                                    text = when (tx.status) {
+                                        TransactionStatus.COMPLETED -> "COMPLETED ✅"
+                                        TransactionStatus.APPROVED -> "APPROVED ✔️"
+                                        TransactionStatus.REJECTED -> "FLAGGED 🚩"
+                                        TransactionStatus.PENDING -> "PENDING ⏳"
+                                        TransactionStatus.LOCKED -> "LOCKED ⚡"
+                                    },
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = when (tx.status) {
+                                        TransactionStatus.COMPLETED, TransactionStatus.APPROVED -> GreenSuccess
+                                        TransactionStatus.REJECTED -> RedDanger
+                                        TransactionStatus.PENDING -> OrangeWarning
+                                        TransactionStatus.LOCKED -> Color(0xFF6366F1)
+                                    },
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+
+                        // Middle: Details and Timestamp
+                        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(
+                                text = tx.description,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextPrimary
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "User: ${tx.userId.take(8)}...",
+                                    fontSize = 10.sp,
+                                    color = TextSecondary
+                                )
+                                Text(
+                                    text = "⏱️ $dateFull",
+                                    fontSize = 10.sp,
+                                    color = TextSecondary,
+                                    fontWeight = FontWeight.Medium
+                                )
+                            }
+                            Text(
+                                text = "Tx Ref: ${tx.id}",
+                                fontSize = 9.sp,
+                                color = Color.Gray
+                            )
+                        }
+
+                        // Manual Status Override Action Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (tx.status != TransactionStatus.REJECTED) {
+                                OutlinedButton(
+                                    onClick = { onUpdateTransactionStatus(tx.id, TransactionStatus.REJECTED) },
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = RedDanger),
+                                    border = BorderStroke(1.dp, RedDanger.copy(alpha = 0.5f)),
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                    modifier = Modifier.weight(1f).testTag("quick_flag_${tx.id}")
+                                ) {
+                                    Icon(Icons.Default.Flag, contentDescription = null, modifier = Modifier.size(13.dp), tint = RedDanger)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Flag 🚩", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+
+                            if (tx.status != TransactionStatus.COMPLETED) {
+                                Button(
+                                    onClick = { onUpdateTransactionStatus(tx.id, TransactionStatus.COMPLETED) },
+                                    colors = ButtonDefaults.buttonColors(containerColor = GreenSuccess),
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                    modifier = Modifier.weight(1f).testTag("quick_complete_${tx.id}")
+                                ) {
+                                    Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.size(13.dp), tint = Color.White)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("Complete ✅", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                }
+                            }
+
+                            OutlinedButton(
+                                onClick = { selectedTxForOverride = tx },
+                                shape = RoundedCornerShape(10.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                modifier = Modifier.testTag("override_status_btn_${tx.id}")
+                            ) {
+                                Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(13.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Override", fontSize = 10.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

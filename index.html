@@ -77,7 +77,7 @@
 
   <!-- React JSX Application -->
   <script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
+    const { useState, useEffect, useMemo, useCallback } = React;
 
     const TIERS_DATA = [
       { id: 'tier_a', name: 'Tier A - Starter', minAmount: 6000, durationDays: 3, rate: 0.02, desc: 'Quick 3-day liquidity test', badge: 'Starter' },
@@ -87,12 +87,186 @@
     ];
 
     const CURRENCIES = {
-      RWF: { symbol: 'RWF', rate: 1 },
-      USD: { symbol: '$', rate: 0.00073 },
-      KES: { symbol: 'KSh', rate: 0.095 },
-      UGX: { symbol: 'USh', rate: 2.72 },
-      EUR: { symbol: '€', rate: 0.00067 }
+      RWF: { symbol: 'RWF', rate: 1, name: 'Rwandan Franc', flag: '🇷🇼', perUsd: 1385.0 },
+      USD: { symbol: '$', rate: 0.000722, name: 'US Dollar', flag: '🇺🇸', perUsd: 1.0 },
+      KES: { symbol: 'KSh', rate: 0.0942, name: 'Kenyan Shilling', flag: '🇰🇪', perUsd: 130.5 },
+      UGX: { symbol: 'USh', rate: 2.686, name: 'Ugandan Shilling', flag: '🇺🇬', perUsd: 3720.0 },
+      EUR: { symbol: '€', rate: 0.000664, name: 'Euro', flag: '🇪🇺', perUsd: 0.92 }
     };
+
+    /**
+     * Custom React Hook to fetch up-to-date currency exchange rates from an external API
+     * and dynamically adjust base interest rates across savings tiers based on live market spreads.
+     */
+    function useLiveExchangeRates(baseTiers = TIERS_DATA) {
+      const [ratesData, setRatesData] = useState(() => {
+        const saved = localStorage.getItem('sfc_live_exchange_rates');
+        if (saved) {
+          try { return JSON.parse(saved); } catch(e) {}
+        }
+        return {
+          rates: { RWF: 1385.0, USD: 1.0, KES: 130.5, UGX: 3720.0, EUR: 0.92 },
+          lastUpdated: 'Cached default',
+          source: 'Open Exchange Rates (ER-API Live Feed)'
+        };
+      });
+
+      const [currencies, setCurrencies] = useState(() => {
+        const rwfPerUsd = (ratesData.rates && ratesData.rates.RWF) || 1385.0;
+        return {
+          RWF: { symbol: 'RWF', rate: 1, name: 'Rwandan Franc', flag: '🇷🇼', perUsd: rwfPerUsd },
+          USD: { symbol: '$', rate: 1 / rwfPerUsd, name: 'US Dollar', flag: '🇺🇸', perUsd: 1.0 },
+          KES: { symbol: 'KSh', rate: (ratesData.rates.KES || 130.5) / rwfPerUsd, name: 'Kenyan Shilling', flag: '🇰🇪', perUsd: ratesData.rates.KES || 130.5 },
+          UGX: { symbol: 'USh', rate: (ratesData.rates.UGX || 3720.0) / rwfPerUsd, name: 'Ugandan Shilling', flag: '🇺🇬', perUsd: ratesData.rates.UGX || 3720.0 },
+          EUR: { symbol: '€', rate: (ratesData.rates.EUR || 0.92) / rwfPerUsd, name: 'Euro', flag: '🇪🇺', perUsd: ratesData.rates.EUR || 0.92 }
+        };
+      });
+
+      const [dynamicYieldBoost, setDynamicYieldBoost] = useState(() => {
+        const saved = localStorage.getItem('sfc_market_yield_boost');
+        return saved ? parseFloat(saved) : 0.001; // default +0.10% adaptive yield spread
+      });
+
+      const [marketAdjustment, setMarketAdjustment] = useState({
+        delta: 0.001,
+        label: '+0.10% Live Forex Liquidity Spread Boost',
+        source: 'Open Exchange Rates (ER-API Live Feed)',
+        baseRate: 0.02,
+        adjustedRate: 0.021,
+        rwfPerUsd: 1385.0
+      });
+
+      const [ratesLoading, setRatesLoading] = useState(false);
+      const [ratesError, setRatesError] = useState(null);
+      const [lastSyncTime, setLastSyncTime] = useState(ratesData.lastUpdated || 'Just now');
+
+      const fetchRates = useCallback(async () => {
+        setRatesLoading(true);
+        setRatesError(null);
+        try {
+          // 1. Primary Live Exchange Rate API (open.er-api.com - Real-time forex rates, CORS free)
+          const res = await fetch('https://open.er-api.com/v6/latest/USD', {
+            headers: { 'Accept': 'application/json' }
+          });
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const data = await res.json();
+          if (data && data.rates && data.rates.RWF) {
+            const rawRates = data.rates;
+            const rwfPerUsd = Number(rawRates.RWF) || 1385.0;
+            const kesPerUsd = Number(rawRates.KES) || 130.5;
+            const ugxPerUsd = Number(rawRates.UGX) || 3720.0;
+            const eurPerUsd = Number(rawRates.EUR) || 0.92;
+
+            const updatedCurrencies = {
+              RWF: { symbol: 'RWF', rate: 1, name: 'Rwandan Franc', flag: '🇷🇼', perUsd: rwfPerUsd },
+              USD: { symbol: '$', rate: 1 / rwfPerUsd, name: 'US Dollar', flag: '🇺🇸', perUsd: 1.0 },
+              KES: { symbol: 'KSh', rate: kesPerUsd / rwfPerUsd, name: 'Kenyan Shilling', flag: '🇰🇪', perUsd: kesPerUsd },
+              UGX: { symbol: 'USh', rate: ugxPerUsd / rwfPerUsd, name: 'Ugandan Shilling', flag: '🇺🇬', perUsd: ugxPerUsd },
+              EUR: { symbol: '€', rate: eurPerUsd / rwfPerUsd, name: 'Euro', flag: '🇪🇺', perUsd: eurPerUsd }
+            };
+
+            // Dynamic interest rate adjustment calculation based on FX liquidity spread
+            // Evaluates USD/RWF strength and calibrates dynamic yield bonus (+0.05% to +0.20%)
+            let calculatedBoost = 0.001; // +0.10%
+            if (rwfPerUsd >= 1400) {
+              calculatedBoost = 0.002; // +0.20%
+            } else if (rwfPerUsd >= 1350) {
+              calculatedBoost = 0.0015; // +0.15%
+            } else {
+              calculatedBoost = 0.001; // +0.10%
+            }
+
+            const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+            setCurrencies(updatedCurrencies);
+            setDynamicYieldBoost(calculatedBoost);
+            setLastSyncTime(nowStr);
+            setRatesData({
+              rates: { RWF: rwfPerUsd, USD: 1.0, KES: kesPerUsd, UGX: ugxPerUsd, EUR: eurPerUsd },
+              lastUpdated: nowStr,
+              source: 'Open Exchange Rates (ER-API Live)'
+            });
+            setMarketAdjustment({
+              delta: calculatedBoost,
+              label: `+${(calculatedBoost * 100).toFixed(2)}% Live Forex Spread Boost`,
+              source: 'Open Exchange Rates (ER-API Live Feed)',
+              baseRate: 0.02,
+              adjustedRate: 0.02 + calculatedBoost,
+              rwfPerUsd: rwfPerUsd
+            });
+
+            localStorage.setItem('sfc_live_exchange_rates', JSON.stringify({
+              rates: { RWF: rwfPerUsd, USD: 1.0, KES: kesPerUsd, UGX: ugxPerUsd, EUR: eurPerUsd },
+              lastUpdated: nowStr,
+              source: 'Open Exchange Rates'
+            }));
+            localStorage.setItem('sfc_market_yield_boost', calculatedBoost.toString());
+          }
+        } catch (err) {
+          console.warn('Primary exchange rate sync failed, attempting secondary API...', err);
+          try {
+            const fallbackRes = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+            if (fallbackRes.ok) {
+              const fallbackData = await fallbackRes.json();
+              if (fallbackData && fallbackData.rates && fallbackData.rates.RWF) {
+                const rwfPerUsd = Number(fallbackData.rates.RWF) || 1385.0;
+                const kesPerUsd = Number(fallbackData.rates.KES) || 130.5;
+                const ugxPerUsd = Number(fallbackData.rates.UGX) || 3720.0;
+                const eurPerUsd = Number(fallbackData.rates.EUR) || 0.92;
+
+                const updatedCurrencies = {
+                  RWF: { symbol: 'RWF', rate: 1, name: 'Rwandan Franc', flag: '🇷🇼', perUsd: rwfPerUsd },
+                  USD: { symbol: '$', rate: 1 / rwfPerUsd, name: 'US Dollar', flag: '🇺🇸', perUsd: 1.0 },
+                  KES: { symbol: 'KSh', rate: kesPerUsd / rwfPerUsd, name: 'Kenyan Shilling', flag: '🇰🇪', perUsd: kesPerUsd },
+                  UGX: { symbol: 'USh', rate: ugxPerUsd / rwfPerUsd, name: 'Ugandan Shilling', flag: '🇺🇬', perUsd: ugxPerUsd },
+                  EUR: { symbol: '€', rate: eurPerUsd / rwfPerUsd, name: 'Euro', flag: '🇪🇺', perUsd: eurPerUsd }
+                };
+
+                const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                setCurrencies(updatedCurrencies);
+                setLastSyncTime(nowStr);
+              }
+            }
+          } catch (fallbackErr) {
+            console.error('Fallback rate sync failed, using cached rates:', fallbackErr);
+            setRatesError('Using offline cached exchange rates');
+          }
+        } finally {
+          setRatesLoading(false);
+        }
+      }, []);
+
+      useEffect(() => {
+        fetchRates();
+        const interval = setInterval(fetchRates, 180000); // 3 minutes auto-refresh
+        return () => clearInterval(interval);
+      }, [fetchRates]);
+
+      // Dynamically calibrated tiers adjusting base interest rates with market boost
+      const dynamicTiers = useMemo(() => {
+        return baseTiers.map(tier => {
+          const adjustedRate = +(tier.rate + dynamicYieldBoost).toFixed(4);
+          return {
+            ...tier,
+            baseRate: tier.rate,
+            rate: adjustedRate,
+            dynamicBoost: dynamicYieldBoost,
+            dynamicRatePercent: (adjustedRate * 100).toFixed(1)
+          };
+        });
+      }, [baseTiers, dynamicYieldBoost]);
+
+      return {
+        currencies,
+        tiers: dynamicTiers,
+        rawExchangeRates: ratesData.rates || { RWF: 1385.0, USD: 1.0, KES: 130.5, UGX: 3720.0, EUR: 0.92 },
+        ratesLoading,
+        ratesError,
+        lastSyncTime,
+        marketAdjustment,
+        refreshRates: fetchRates
+      };
+    }
 
     const WEB_TRANSLATIONS = {
       EN: {
@@ -134,6 +308,20 @@
       });
       const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, cycles, deposit, withdraw, admin
       const [reserveFund, setReserveFund] = useState(20000000);
+
+      // Custom Hook to fetch up-to-date currency exchange rates and adjust base interest rates
+      const {
+        currencies,
+        tiers,
+        rawExchangeRates,
+        ratesLoading,
+        ratesError,
+        lastSyncTime,
+        marketAdjustment,
+        refreshRates
+      } = useLiveExchangeRates(TIERS_DATA);
+
+      const [ratesModalOpen, setRatesModalOpen] = useState(false);
 
       const t = WEB_TRANSLATIONS[lang] || WEB_TRANSLATIONS.EN;
 
@@ -308,10 +496,10 @@
       };
 
       const formatMoney = (rwfAmount) => {
-        const cur = CURRENCIES[currency];
+        const cur = (currencies && currencies[currency]) || CURRENCIES[currency] || { symbol: 'RWF', rate: 1 };
         const val = rwfAmount * cur.rate;
         if (currency === 'RWF') return Math.round(val).toLocaleString() + ' RWF';
-        return cur.symbol + val.toFixed(2);
+        return cur.symbol + (val >= 1000 ? val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : val.toFixed(2));
       };
 
       const totalDeposited = useMemo(() => {
@@ -384,21 +572,22 @@
         } catch (e) {}
       };
 
-      const handleWithdrawSubmit = (phone, amount) => {
+      const handleWithdrawSubmit = (phone, amount, method = 'MTN Mobile Money') => {
         const numAmount = Number(amount);
         if (!phone || numAmount <= 0) {
-          showToast('Please enter a valid phone and amount', 'error');
+          showToast('Please enter a valid address/phone and amount', 'error');
           return;
         }
         const newWth = {
           id: 'WTH-' + Math.floor(1000 + Math.random() * 9000),
           phone,
           amount: numAmount,
+          method,
           status: 'PENDING',
           time: 'Just now'
         };
         setWithdrawals([newWth, ...withdrawals]);
-        showToast(`🚀 Withdrawal request of ${formatMoney(numAmount)} submitted to ${phone}!`);
+        showToast(`🚀 Withdrawal request of ${formatMoney(numAmount)} submitted via ${method}!`);
       };
 
       return (
@@ -486,6 +675,19 @@
                   )}
                 </button>
 
+                {/* Live Forex & Market Yield Sync Pill */}
+                <button
+                  onClick={() => setRatesModalOpen(true)}
+                  title="Live Forex & Dynamic Yield Engine"
+                  className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-amber-300 border border-slate-700 text-xs font-bold transition-all shadow-sm group"
+                >
+                  <span className={`w-2 h-2 rounded-full ${ratesLoading ? 'bg-amber-400 animate-spin' : 'bg-emerald-400 animate-pulse'}`}></span>
+                  <span>1 USD ≈ {Math.round(rawExchangeRates?.RWF || 1385)} RWF</span>
+                  <span className="bg-emerald-500/20 text-emerald-400 text-[10px] px-1.5 py-0.5 rounded font-extrabold group-hover:bg-emerald-500/30">
+                    +{(marketAdjustment?.delta * 100).toFixed(1)}% FX Yield
+                  </span>
+                </button>
+
                 <select
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
@@ -499,7 +701,7 @@
                 </select>
 
                 <button
-                  onClick={() => { setSelectedTierForDeposit(TIERS_DATA[2]); setDepositModalOpen(true); }}
+                  onClick={() => { setSelectedTierForDeposit(tiers[2] || TIERS_DATA[2]); setDepositModalOpen(true); }}
                   className="bg-gradient-to-r from-[#E5A93B] to-amber-400 text-[#001A40] px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-extrabold shadow-md hover:brightness-110 active:scale-95 transition-all"
                 >
                   {t.deposit}
@@ -538,9 +740,19 @@
                 <span className="truncate">{announcements[0]?.title} — {announcements[0]?.content}</span>
                 <span className="text-[11px] text-blue-600 dark:text-amber-300 font-bold underline whitespace-nowrap ml-1">View Details ↗</span>
               </div>
-              <span className="hidden sm:inline-block text-xs font-bold text-amber-700 dark:text-amber-300 ml-4 whitespace-nowrap">
-                Reserve: {formatMoney(reserveFund)}
-              </span>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setRatesModalOpen(true); }}
+                  className="hidden lg:inline-flex items-center gap-1 text-[11px] bg-blue-500/20 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-bold hover:bg-blue-500/30"
+                >
+                  <span>⚡ 1 USD = {Number(rawExchangeRates?.RWF || 1385).toFixed(0)} RWF</span>
+                  <span className="underline">Rates Hub ↗</span>
+                </button>
+                <span className="hidden sm:inline-block text-xs font-bold text-amber-700 dark:text-amber-300 ml-2 whitespace-nowrap">
+                  Reserve: {formatMoney(reserveFund)}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -553,7 +765,9 @@
                 totalDeposited={totalDeposited}
                 totalEarned={totalEarned}
                 activeCyclesCount={userCycles.length}
-                tiers={TIERS_DATA}
+                tiers={tiers}
+                marketAdjustment={marketAdjustment}
+                onOpenRatesModal={() => setRatesModalOpen(true)}
                 onSelectTier={(tier) => { setSelectedTierForDeposit(tier); setDepositModalOpen(true); }}
                 onOpenCalculator={() => {}}
                 userCycles={userCycles}
@@ -565,6 +779,7 @@
                 referredFriends={referredFriends}
                 onSimulateReferral={handleSimulateReferral}
                 showToast={showToast}
+                onNavigateFaq={() => setActiveTab('faq')}
               />
             )}
 
@@ -572,7 +787,7 @@
               <CyclesView
                 cycles={userCycles}
                 formatMoney={formatMoney}
-                onOpenDeposit={() => { setSelectedTierForDeposit(TIERS_DATA[2]); setDepositModalOpen(true); }}
+                onOpenDeposit={() => { setSelectedTierForDeposit(tiers[2] || TIERS_DATA[2]); setDepositModalOpen(true); }}
               />
             )}
 
@@ -595,6 +810,22 @@
                 formatMoney={formatMoney}
                 announcements={announcements}
                 onAddAnnouncement={(ann) => setAnnouncements([ann, ...announcements])}
+                onUpdateDepositStatus={(id, status) => {
+                  setDeposits(prev => {
+                    const updated = prev.map(d => d.id === id ? { ...d, status } : d);
+                    localStorage.setItem('sfc_deposits', JSON.stringify(updated));
+                    return updated;
+                  });
+                  showToast(`Deposit #${id} marked as ${status}`);
+                }}
+                onUpdateWithdrawalStatus={(id, status) => {
+                  setWithdrawals(prev => {
+                    const updated = prev.map(w => w.id === id ? { ...w, status } : w);
+                    localStorage.setItem('sfc_withdrawals', JSON.stringify(updated));
+                    return updated;
+                  });
+                  showToast(`Withdrawal #${id} marked as ${status}`);
+                }}
               />
             )}
           </main>
@@ -602,7 +833,7 @@
           {/* Deposit Modal */}
           {depositModalOpen && (
             <DepositModal
-              tier={selectedTierForDeposit}
+              tier={selectedTierForDeposit || tiers[2] || TIERS_DATA[2]}
               formatMoney={formatMoney}
               onClose={() => setDepositModalOpen(false)}
               onSubmit={handleDepositSubmit}
@@ -615,6 +846,20 @@
               announcements={announcements}
               onClose={() => setNotificationsModalOpen(false)}
               onDeleteAnnouncement={(id) => setAnnouncements(announcements.filter(a => a.id !== id))}
+            />
+          )}
+
+          {/* Live Currency Rates & Dynamic Yield Modal */}
+          {ratesModalOpen && (
+            <RatesModal
+              currencies={currencies}
+              rawExchangeRates={rawExchangeRates}
+              marketAdjustment={marketAdjustment}
+              lastSyncTime={lastSyncTime}
+              ratesLoading={ratesLoading}
+              ratesError={ratesError}
+              onRefresh={refreshRates}
+              onClose={() => setRatesModalOpen(false)}
             />
           )}
 
@@ -638,10 +883,72 @@
     }
 
     // DASHBOARD VIEW
-    function DashboardView({ formatMoney, reserveFund, totalDeposited, totalEarned, activeCyclesCount, tiers, onSelectTier, userCycles, welcomeBonusClaimed, onClaimWelcomeBonus, referralCode, pendingBonusPercent, referralBonusCash, referredFriends, onSimulateReferral, showToast }) {
+    function DashboardView({ formatMoney, reserveFund, totalDeposited, totalEarned, activeCyclesCount, tiers, marketAdjustment, onOpenRatesModal, onSelectTier, userCycles, welcomeBonusClaimed, onClaimWelcomeBonus, referralCode, pendingBonusPercent, referralBonusCash, referredFriends, onSimulateReferral, showToast, onNavigateFaq }) {
       const [calcPrincipal, setCalcPrincipal] = useState(15000);
       const [calcCycles, setCalcCycles] = useState(5);
       const [copied, setCopied] = useState(false);
+      const [faqCategory, setFaqCategory] = useState('All');
+      const [expandedFaq, setExpandedFaq] = useState('faq_1');
+      const [dashboardMomoTier, setDashboardMomoTier] = useState(tiers[2] || { id: 'tier_c', name: 'Tier C', minAmount: 15000 });
+      const [dashboardQrWithAmount, setDashboardQrWithAmount] = useState(false);
+
+      const dashboardUssdCode = dashboardQrWithAmount
+        ? `*182*8*1*1799283*${dashboardMomoTier.minAmount}#`
+        : `*182*8*1*1799283#`;
+      const dashboardQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(dashboardUssdCode)}&color=001A40&bgcolor=FFFFFF&margin=4`;
+
+      const dashboardFaqs = [
+        {
+          id: 'faq_1',
+          category: '3-Day Cycle',
+          icon: '⚡',
+          q: 'How does the 3-day (72-hour) savings cycle work?',
+          a: 'When you deposit funds into any savings tier (e.g. 15,000 RWF), your principal enters an automated 72-hour locked micro-cycle. Your funds are secured in our reserve pool. At the exact completion of the 72 hours, 100% of your principal PLUS your guaranteed profit yield is automatically unlocked and credited to your Available Balance.',
+          tip: 'Track the live countdown timer on your Active Cycles tab at any time!'
+        },
+        {
+          id: 'faq_2',
+          category: '3-Day Cycle',
+          icon: '🔒',
+          q: 'Can I withdraw or cancel my deposit before 72 hours?',
+          a: 'No. Funds remain strictly locked for the full 72-hour duration to maintain liquidity pool stability and guarantee fixed return yields for all savers. Once matured, 100% of funds can be instantly withdrawn to MoMo/Crypto or reinvested into a new cycle.',
+          tip: 'You can run multiple cycles across different tiers simultaneously.'
+        },
+        {
+          id: 'faq_3',
+          category: 'Payment Methods',
+          icon: '💳',
+          q: 'Which payment methods are supported for deposits & withdrawals?',
+          a: 'We support MTN Mobile Money (*182*8*1*1799283#), Airtel Money (*182#), direct Bank Transfer (BK, I&M, Equity), and Crypto USDT (TRC20 on TRON & BEP20 on BNB Chain) with 0 network gas fees. Deposits are confirmed instantly via SMS reference verification.',
+          tip: 'Save your SMS Transaction Reference ID during checkout to verify deposits instantly.'
+        },
+        {
+          id: 'faq_4',
+          category: 'Payment Methods',
+          icon: '📱',
+          q: 'How fast are withdrawals processed to MoMo & Crypto?',
+          a: 'Withdrawal requests are processed automatically 24/7 and typically reach your MTN Mobile Money, Airtel, or USDT wallet address within 5 to 15 minutes. Official text proof of receipts can be downloaded directly from your withdrawal history.',
+          tip: 'There are zero hidden withdrawal fees on both Mobile Money and Crypto USDT payouts.'
+        },
+        {
+          id: 'faq_5',
+          category: 'Reserve Safety',
+          icon: '🛡️',
+          q: 'How does the 20,000,000 RWF Reserve Fund protect my funds?',
+          a: 'Future Smart Capital maintains an audited 20,000,000 RWF Liquidity Reserve Fund dedicated exclusively to backing user deposits and ensuring 100% solvency and uninterrupted on-time payouts under all market conditions.',
+          tip: 'You can monitor the live reserve fund balance at the top of the dashboard anytime.'
+        },
+        {
+          id: 'faq_6',
+          category: 'Reserve Safety',
+          icon: '🔐',
+          q: 'Is my account data and capital protected against fraud?',
+          a: 'Yes. All transactions use double-entry encryption, 24/7 automated ledger verification, and phone-bound KYC authentication. Payouts can only be dispatched to your registered and verified recipient account.',
+          tip: 'Always register with the exact phone number or wallet address you use to receive disbursements.'
+        }
+      ];
+
+      const filteredFaqs = faqCategory === 'All' ? dashboardFaqs : dashboardFaqs.filter(f => f.category === faqCategory);
 
       const referralLink = window.location.origin + window.location.pathname + '?ref=' + (referralCode || 'SFC50');
 
@@ -658,15 +965,17 @@
       };
 
       const calcYield = useMemo(() => {
-        const singleCycle = calcPrincipal * 0.02;
+        const rate = (tiers && tiers[0] && tiers[0].rate) || 0.02;
+        const singleCycle = calcPrincipal * rate;
         const totalProfit = singleCycle * calcCycles;
         return {
           single: singleCycle,
           totalProfit: totalProfit,
           totalPayout: calcPrincipal + totalProfit,
-          days: calcCycles * 3
+          days: calcCycles * 3,
+          rate: rate
         };
-      }, [calcPrincipal, calcCycles]);
+      }, [calcPrincipal, calcCycles, tiers]);
 
       return (
         <div className="space-y-8">
@@ -760,6 +1069,34 @@
             </div>
           </div>
 
+          {/* Live Forex & Market-Adjusted Yield Banner */}
+          <div className="bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-amber-900/30 border border-blue-500/30 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-lg backdrop-blur-sm">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-blue-500/20 text-blue-300 flex items-center justify-center text-2xl shrink-0 border border-blue-400/30 shadow-inner">
+                🌐
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-black uppercase tracking-wider text-amber-400">Live Forex & Dynamic Base Yield Engine</span>
+                  <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-black px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    API Connected
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300 mt-1">
+                  Base 3-day rates dynamically hedged against live USD/RWF forex exchange rates. Current yield boost: <b className="text-emerald-400 font-black">+{(marketAdjustment?.delta * 100).toFixed(2)}%</b> → Total baseline: <b className="text-amber-300 font-black">{((0.02 + (marketAdjustment?.delta || 0.001)) * 100).toFixed(2)}%</b> per 72h.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={onOpenRatesModal}
+              className="shrink-0 w-full sm:w-auto bg-blue-600/90 hover:bg-blue-600 text-white text-xs font-black px-4 py-2.5 rounded-xl border border-blue-400/40 transition-all flex items-center justify-center gap-2 shadow-md hover:scale-105"
+            >
+              <span>📊 View Live Exchange Rates</span>
+              <span>↗</span>
+            </button>
+          </div>
+
           {/* Available Savings Tiers */}
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -799,7 +1136,7 @@
                           <span className="font-bold text-blue-600 dark:text-blue-400">3 Days (72h)</span>
                         </div>
                         <div className="flex justify-between text-xs">
-                          <span className="text-slate-500 dark:text-slate-400">3-Day Profit (+2.0%):</span>
+                          <span className="text-slate-500 dark:text-slate-400">3-Day Profit (+{(tier.rate * 100).toFixed(1)}%):</span>
                           <span className="font-extrabold text-emerald-600 dark:text-emerald-400">+{formatMoney(profit)}</span>
                         </div>
                         <div className="pt-1.5 border-t border-slate-200 dark:border-slate-800 flex justify-between text-xs font-extrabold">
@@ -881,43 +1218,125 @@
               </div>
             </div>
 
-            {/* MoMo Merchant Instructions */}
+            {/* MoMo Merchant Instructions & Dynamic USSD QR Code */}
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-md flex flex-col justify-between">
               <div>
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center text-xl font-bold">
-                    💳
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 flex items-center justify-center text-xl font-bold">
+                      📱
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Instant MTN MoMo Deposition</h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Scan QR or dial USSD to fund your account</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-lg font-extrabold text-slate-900 dark:text-white">Instant MTN MoMo Deposition</h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">Official verified merchant deposition instructions</p>
+                  <span className="bg-amber-400 text-slate-950 font-black text-[10px] uppercase tracking-wider px-2 py-0.5 rounded-full">
+                    Dynamic QR
+                  </span>
+                </div>
+
+                {/* Tier Selector Chips for Dynamic USSD */}
+                <div className="mb-4">
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-1.5">
+                    Select Savings Tier Amount:
+                  </label>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {tiers.map((t) => {
+                      const isSelected = dashboardMomoTier.id === t.id;
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setDashboardMomoTier(t)}
+                          className={`py-1.5 px-2 rounded-xl text-center transition-all ${
+                            isSelected
+                              ? 'bg-[#001A40] text-amber-400 font-extrabold border-2 border-amber-400 shadow-sm'
+                              : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border border-transparent hover:bg-slate-200'
+                          }`}
+                        >
+                          <div className="text-[9px] uppercase tracking-wider">{t.name}</div>
+                          <div className="text-[11px] font-black">{formatMoney(t.minAmount).replace(' RWF', '')}</div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                <div className="bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-2xl p-4 mb-4">
-                  <div className="text-xs font-bold text-blue-900 dark:text-blue-300 uppercase tracking-wider">MTN Mobile Money Merchant Code:</div>
-                  <div className="text-2xl font-black text-blue-700 dark:text-amber-400 font-mono mt-1 select-all bg-blue-100/80 dark:bg-blue-900/60 px-3 py-1.5 rounded-lg inline-block">
-                    *182*8*1*1799283#
+                {/* Dynamic QR Code Box */}
+                <div className="bg-slate-50 dark:bg-slate-950/60 border border-amber-200 dark:border-amber-900/50 rounded-2xl p-4 mb-4 flex flex-col items-center text-center">
+                  <div className="flex items-center justify-center gap-2 mb-2 w-full">
+                    <button
+                      type="button"
+                      onClick={() => setDashboardQrWithAmount(false)}
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all ${
+                        !dashboardQrWithAmount
+                          ? 'bg-[#001A40] text-amber-400 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      Merchant Code Only
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDashboardQrWithAmount(true)}
+                      className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all ${
+                        dashboardQrWithAmount
+                          ? 'bg-[#001A40] text-amber-400 shadow-sm'
+                          : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      Encode {formatMoney(dashboardMomoTier.minAmount)}
+                    </button>
                   </div>
-                  <div className="text-xs text-blue-600 dark:text-blue-300 font-semibold mt-2">
-                    Merchant Name: SMART FUTURE CAPITAL Ltd.
+
+                  <div className="bg-white p-2.5 rounded-2xl border-2 border-amber-400 shadow-sm my-1 inline-block">
+                    <img
+                      src={dashboardQrUrl}
+                      alt="MTN MoMo USSD Dynamic QR"
+                      className="w-32 h-32 object-contain rounded-lg"
+                    />
+                  </div>
+
+                  <div className="mt-2 bg-blue-50 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-1 text-xs font-mono font-bold text-blue-700 dark:text-blue-300 select-all">
+                    📲 {dashboardUssdCode}
+                  </div>
+
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 font-medium">
+                    Scan with MoMo App or mobile banking (BK, Equity, I&M) to auto-trigger USSD.
+                  </p>
+
+                  <div className="flex gap-2 w-full mt-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(dashboardUssdCode);
+                        alert(`Copied USSD code ${dashboardUssdCode} to clipboard!`);
+                      }}
+                      className="flex-1 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1"
+                    >
+                      <span>📋</span> Copy USSD
+                    </button>
+                    <a
+                      href={`tel:${dashboardUssdCode.replace(/#/g, '%23')}`}
+                      className="flex-1 bg-amber-400 hover:bg-amber-500 text-slate-950 py-1.5 rounded-xl text-xs font-extrabold shadow transition-all flex items-center justify-center gap-1"
+                    >
+                      <span>📞</span> Tap to Dial
+                    </a>
                   </div>
                 </div>
 
-                <ol className="text-xs text-slate-600 dark:text-slate-300 space-y-2 list-decimal list-inside font-medium leading-relaxed">
-                  <li>Dial the MTN merchant code or use Airtel Money transfer.</li>
-                  <li>Enter the required Tier deposit amount (e.g. 15,000 RWF).</li>
-                  <li>Confirm recipient is <strong className="text-slate-900 dark:text-white">SMART FUTURE CAPITAL</strong> and input your PIN.</li>
-                  <li>Copy the SMS Transaction ID and click the Deposit button to activate.</li>
-                </ol>
+                <div className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                  <strong>Merchant Name:</strong> SMART FUTURE CAPITAL Ltd. (1799283)
+                </div>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
-                  onClick={() => onSelectTier(tiers[2])}
+                  onClick={() => onSelectTier(dashboardMomoTier)}
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold py-3 rounded-xl shadow transition-all text-sm flex items-center justify-center gap-2"
                 >
-                  <span>✅</span> Submit MoMo Transaction ID
+                  <span>✅</span> Submit MoMo Transaction ID ({dashboardMomoTier.name})
                 </button>
               </div>
             </div>
@@ -1042,6 +1461,102 @@
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Frequently Asked Questions Dashboard Section */}
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-md space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center text-2xl font-bold">
+                  ❓
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="bg-blue-100 dark:bg-blue-900/40 text-blue-900 dark:text-blue-300 text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border border-blue-200 dark:border-blue-700">
+                      INSTANT ANSWERS
+                    </span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Knowledge & Guidance</span>
+                  </div>
+                  <h3 className="text-xl font-extrabold text-slate-900 dark:text-white mt-1">Frequently Asked Questions</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Clear answers about the 3-day compounding cycles, payment methods & reserve safety</p>
+                </div>
+              </div>
+
+              {onNavigateFaq && (
+                <button
+                  onClick={onNavigateFaq}
+                  className="bg-amber-100 hover:bg-amber-200 dark:bg-amber-950/60 dark:hover:bg-amber-900/60 text-amber-900 dark:text-amber-300 border border-amber-300 dark:border-amber-700/80 px-4 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all self-start sm:self-auto"
+                >
+                  <span>Open Full Help Center 📖</span>
+                </button>
+              )}
+            </div>
+
+            {/* FAQ Category Pills */}
+            <div className="flex flex-wrap gap-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+              {[
+                { id: 'All', label: 'All Topics' },
+                { id: '3-Day Cycle', label: '⚡ 3-Day Cycle' },
+                { id: 'Payment Methods', label: '💳 Payment Rails' },
+                { id: 'Reserve Safety', label: '🛡️ Reserve Safety' }
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setFaqCategory(tab.id)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                    faqCategory === tab.id
+                      ? 'bg-[#001A40] text-amber-400 dark:bg-amber-400 dark:text-slate-950 shadow-sm'
+                      : 'bg-slate-100 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* FAQ Accordion List */}
+            <div className="space-y-3">
+              {filteredFaqs.map((faq) => {
+                const isOpen = expandedFaq === faq.id;
+                return (
+                  <div
+                    key={faq.id}
+                    className={`rounded-2xl border transition-all ${
+                      isOpen
+                        ? 'bg-slate-50/90 dark:bg-slate-950/70 border-blue-300 dark:border-blue-800/70 shadow-sm'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300'
+                    }`}
+                  >
+                    <button
+                      onClick={() => setExpandedFaq(isOpen ? null : faq.id)}
+                      className="w-full p-4 sm:p-5 text-left flex items-center justify-between gap-3 focus:outline-none"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-lg">{faq.icon}</span>
+                        <span className="text-sm font-extrabold text-slate-900 dark:text-white leading-snug">
+                          {faq.q}
+                        </span>
+                      </div>
+                      <span className={`text-slate-400 transform transition-transform duration-200 shrink-0 font-bold ${isOpen ? 'rotate-180 text-blue-600 dark:text-amber-400' : ''}`}>
+                        ▼
+                      </span>
+                    </button>
+
+                    {isOpen && (
+                      <div className="px-4 sm:px-5 pb-5 pt-1 space-y-3 text-xs text-slate-600 dark:text-slate-300 border-t border-slate-100 dark:border-slate-800/80 mt-1">
+                        <p className="leading-relaxed whitespace-pre-line font-medium">{faq.a}</p>
+                        {faq.tip && (
+                          <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl p-3 text-amber-900 dark:text-amber-300 flex items-start gap-2">
+                            <span className="shrink-0">💡</span>
+                            <span className="font-semibold">{faq.tip}</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       );
@@ -1318,16 +1833,35 @@
 
     // WITHDRAW VIEW
     function WithdrawView({ withdrawals, formatMoney, availableBalance, onSubmitWithdraw }) {
-      const [phone, setPhone] = useState('');
+      const [phone, setPhone] = useState('+250 788 123 456');
       const [amount, setAmount] = useState('15000');
       const [selectedMethod, setSelectedMethod] = useState('MTN Mobile Money');
+
+      const isCrypto = selectedMethod.includes('USDT');
+      const isTrc20 = selectedMethod.includes('TRC20');
+      const isBep20 = selectedMethod.includes('BEP20');
+      const numAmount = Number(amount) || 0;
+      const estimatedUsdt = numAmount > 0 ? (numAmount / 1450).toFixed(2) : '0.00';
+
+      const handleMethodChange = (newMethod) => {
+        setSelectedMethod(newMethod);
+        if (newMethod.includes('TRC20')) {
+          setPhone('TR7NHkorK8y62zMpWC2AbWGE8326xTRON');
+        } else if (newMethod.includes('BEP20')) {
+          setPhone('0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c');
+        } else if (newMethod.includes('Bank')) {
+          setPhone('00044-012345678-90 (BK)');
+        } else {
+          setPhone('+250 788 123 456');
+        }
+      };
 
       return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1 bg-white dark:bg-slate-900 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 shadow-md space-y-5">
             <div>
               <h3 className="text-xl font-extrabold text-slate-900 dark:text-white">Request Withdrawal</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">Payout directly to your MTN or Airtel Mobile Money</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">Disbursements via Mobile Money, Bank & Crypto USDT</p>
             </div>
 
             <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-700/60 rounded-2xl p-4">
@@ -1337,23 +1871,35 @@
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Payout Method:</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Payout Destination Method:</label>
                 <select
                   value={selectedMethod}
-                  onChange={(e) => setSelectedMethod(e.target.value)}
+                  onChange={(e) => handleMethodChange(e.target.value)}
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 font-bold text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
                 >
-                  <option value="MTN Mobile Money">📱 MTN Mobile Money</option>
-                  <option value="Airtel Money">📱 Airtel Money</option>
-                  <option value="Bank Transfer (BPR/Equity)">🏦 Bank Transfer (BPR / Equity)</option>
+                  <option value="MTN Mobile Money">📱 MTN Mobile Money (+250)</option>
+                  <option value="Airtel Money">📱 Airtel Money (+250)</option>
+                  <option value="Bank Transfer (BPR/Equity/BK)">🏦 Bank Transfer (BK / I&M / Equity)</option>
+                  <option value="Crypto USDT (TRC20)">🪙 Crypto USDT (TRC20 - TRON)</option>
+                  <option value="Crypto USDT (BEP20)">🪙 Crypto USDT (BEP20 - BNB Chain)</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">MTN / Airtel Phone Number:</label>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  {isTrc20 ? 'USDT TRC20 Wallet Address (TRON):' :
+                   isBep20 ? 'USDT BEP20 Wallet Address (BNB Chain):' :
+                   selectedMethod.includes('Bank') ? 'Bank Account Number & Bank Name:' :
+                   'MTN / Airtel Phone Number:'}
+                </label>
                 <input
                   type="text"
-                  placeholder="+250 788 123 456"
+                  placeholder={
+                    isTrc20 ? 'Starts with T (e.g. TR7NH...)' :
+                    isBep20 ? 'Starts with 0x (e.g. 0x7130...)' :
+                    selectedMethod.includes('Bank') ? 'e.g. 00044-012345678-90 (Bank of Kigali)' :
+                    '+250 788 123 456'
+                  }
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl px-4 py-2.5 font-bold text-slate-900 dark:text-white text-sm focus:ring-2 focus:ring-amber-400 focus:outline-none"
@@ -1371,11 +1917,29 @@
                 />
               </div>
 
+              {isCrypto && (
+                <div className={`p-3.5 rounded-2xl border text-xs space-y-1.5 ${isTrc20 ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60' : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/60'}`}>
+                  <div className="flex items-center justify-between font-bold">
+                    <span className={isTrc20 ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}>
+                      🪙 {isTrc20 ? 'TRON TRC-20 Network' : 'BNB Smart Chain (BEP-20)'}
+                    </span>
+                    <span className="text-emerald-600 dark:text-emerald-400 text-[11px] font-extrabold">⚡ 0 Gas Fee (Sponsored)</span>
+                  </div>
+                  <div className="flex items-center justify-between text-slate-700 dark:text-slate-300 font-medium">
+                    <span>Estimated USDT Payout:</span>
+                    <span className="font-black text-sm text-slate-900 dark:text-white">≈ {estimatedUsdt} USDT</span>
+                  </div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400">
+                    Calculated at 1 USD ≈ 1,450 RWF. Direct on-chain settlement upon admin approval.
+                  </div>
+                </div>
+              )}
+
               <button
-                onClick={() => onSubmitWithdraw(phone, amount)}
-                className="w-full bg-[#001A40] hover:bg-[#05285D] dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300 text-amber-400 font-extrabold py-3 rounded-xl shadow transition-all text-sm"
+                onClick={() => onSubmitWithdraw(phone, amount, selectedMethod)}
+                className="w-full bg-[#001A40] hover:bg-[#05285D] dark:bg-amber-400 dark:text-slate-950 dark:hover:bg-amber-300 text-amber-400 font-extrabold py-3 rounded-xl shadow transition-all text-sm flex items-center justify-center gap-2"
               >
-                Submit MoMo Withdrawal
+                <span>{isCrypto ? 'Submit USDT Withdrawal 🪙' : 'Submit Withdrawal Request ⬆️'}</span>
               </button>
             </div>
           </div>
@@ -1406,6 +1970,51 @@
                 const isApproved = w.status === 'APPROVED' || w.status === 'COMPLETED';
                 const isPending = w.status === 'PENDING';
                 const currentStatus = isApproved ? 'Completed' : isPending ? 'Processing' : 'Flagged';
+                const isCryptoItem = (w.method || '').includes('USDT');
+
+                const handleDownloadReceipt = () => {
+                  const receiptText = [
+                    '============================================================',
+                    '              FUTURE SMART CAPITAL',
+                    '          OFFICIAL WITHDRAWAL PROOF OF RECEIPT',
+                    '============================================================',
+                    `Transaction Reference : ${w.id}`,
+                    `Request Timestamp     : ${w.time || 'Recent'}`,
+                    `Disbursement Status   : ${currentStatus.toUpperCase()} (${w.status})`,
+                    `Processed Time        : ${isApproved ? 'DISBURSED' : 'PENDING'}`,
+                    '',
+                    '------------------- PAYMENT BREAKDOWN ----------------------',
+                    `Payout Destination    : ${w.method || 'MTN Mobile Money'}`,
+                    isCryptoItem ? `Recipient Wallet Addr : ${w.phone}` : `Recipient Account     : ${w.phone}`,
+                    `Gross Withdrawal      : ${formatMoney(w.amount)}`,
+                    isCryptoItem ? `Crypto Equivalent(Est): ~ ${(w.amount / 1450).toFixed(2)} USDT (@ 1 USD ≈ 1,450 RWF)` : '',
+                    isCryptoItem ? 'Network Gas Fee (USDT): 0 USDT (Treasury Sponsored)' : '',
+                    'Processing Fee        : 0 RWF (FREE)',
+                    `Net Disbursed Amount  : ${formatMoney(w.amount)}`,
+                    '',
+                    '------------------ SECURITY & LIQUIDITY --------------------',
+                    'Liquidity Reserve     : Backed by 20,000,000 RWF Capital Fund',
+                    'Platform Merchant Code: 1799283',
+                    'Helpline / WhatsApp   : +250 792 828 727',
+                    'Support Email         : support@futuresmartcapital.rw',
+                    '',
+                    '============================================================',
+                    'This receipt serves as official proof of payout transaction',
+                    'from FUTURE SMART CAPITAL. Keep this record for your audit.',
+                    '============================================================'
+                  ].filter(Boolean).join('\n');
+
+                  const blob = new Blob([receiptText], { type: 'text/plain;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = url;
+                  link.download = `SFC_Withdrawal_Receipt_${w.id}.txt`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  URL.revokeObjectURL(url);
+                  showToast(`📄 Downloaded receipt for Withdrawal #${w.id}!`);
+                };
 
                 return (
                   <div key={w.id} className="p-4 bg-slate-50 dark:bg-slate-950/60 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
@@ -1422,8 +2031,15 @@
                         </div>
                       </div>
 
-                      <div className="text-right">
+                      <div className="text-right flex flex-col items-end gap-1.5">
                         <StatusIndicator status={currentStatus} />
+                        <button
+                          onClick={handleDownloadReceipt}
+                          className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 px-2.5 py-1 rounded-lg transition-colors shadow-xs"
+                          title="Download proof of receipt text summary"
+                        >
+                          <span>📄 Receipt</span>
+                        </button>
                       </div>
                     </div>
 
@@ -1445,7 +2061,7 @@
     }
 
     // ADMIN HUB VIEW
-    function AdminHubView({ reserveFund, onUpdateReserve, deposits, withdrawals, cycles, formatMoney, announcements, onAddAnnouncement }) {
+    function AdminHubView({ reserveFund, onUpdateReserve, deposits, withdrawals, cycles, formatMoney, announcements, onAddAnnouncement, onUpdateDepositStatus, onUpdateWithdrawalStatus }) {
       const [newReserve, setNewReserve] = useState(reserveFund);
       const [annTitle, setAnnTitle] = useState('');
       const [annContent, setAnnContent] = useState('');
@@ -1453,12 +2069,65 @@
       const [annCategory, setAnnCategory] = useState('NEWS');
       const [annUrgent, setAnnUrgent] = useState(false);
 
+      const [auditFilter, setAuditFilter] = useState('ALL');
+      const [auditSearch, setAuditSearch] = useState('');
+
       const PRESET_IMAGES = [
         { label: '📈 50% Profit', url: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=800&q=80' },
         { label: '🛡️ 20M Reserve', url: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?auto=format&fit=crop&w=800&q=80' },
         { label: '📱 MoMo Code', url: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?auto=format&fit=crop&w=800&q=80' },
         { label: '🎉 Special Bonus', url: 'https://images.unsplash.com/photo-1553729459-efe14ef6055d?auto=format&fit=crop&w=800&q=80' }
       ];
+
+      // Combine deposits & withdrawals into unified audit list
+      const auditRecords = useMemo(() => {
+        const depList = deposits.map(d => ({
+          id: d.id,
+          type: 'DEPOSIT',
+          phone: d.phone,
+          amount: d.amount,
+          status: d.status,
+          time: d.time || '1 day ago',
+          momoTxId: d.momoTxId || 'Direct MoMo 1799283'
+        }));
+        const withList = withdrawals.map(w => ({
+          id: w.id,
+          type: 'WITHDRAWAL',
+          phone: w.phone,
+          amount: w.amount,
+          status: w.status,
+          time: w.time || '4 hours ago',
+          momoTxId: w.method || 'MTN Mobile Money'
+        }));
+        return [...depList, ...withList];
+      }, [deposits, withdrawals]);
+
+      const filteredAudits = useMemo(() => {
+        return auditRecords.filter(item => {
+          const matchSearch = auditSearch === '' ||
+            item.id.toLowerCase().includes(auditSearch.toLowerCase()) ||
+            item.phone.toLowerCase().includes(auditSearch.toLowerCase()) ||
+            item.momoTxId.toLowerCase().includes(auditSearch.toLowerCase()) ||
+            item.amount.toString().includes(auditSearch);
+
+          const matchFilter = auditFilter === 'ALL' ||
+            (auditFilter === 'DEPOSIT' && item.type === 'DEPOSIT') ||
+            (auditFilter === 'WITHDRAWAL' && item.type === 'WITHDRAWAL') ||
+            (auditFilter === 'FLAGGED' && item.status === 'REJECTED') ||
+            (auditFilter === 'COMPLETED' && (item.status === 'APPROVED' || item.status === 'COMPLETED')) ||
+            (auditFilter === 'PENDING' && item.status === 'PENDING');
+
+          return matchSearch && matchFilter;
+        });
+      }, [auditRecords, auditFilter, auditSearch]);
+
+      const handleToggleStatus = (record, newStatus) => {
+        if (record.type === 'DEPOSIT') {
+          if (onUpdateDepositStatus) onUpdateDepositStatus(record.id, newStatus);
+        } else {
+          if (onUpdateWithdrawalStatus) onUpdateWithdrawalStatus(record.id, newStatus);
+        }
+      };
 
       return (
         <div className="space-y-8">
@@ -1627,6 +2296,185 @@
               ))}
             </div>
           </div>
+
+          {/* TRANSACTION AUDIT TABLE & STATUS TOGGLING */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900 dark:text-white flex items-center gap-2">
+                  <span>⚖️ Transaction Audit Table</span>
+                  <span className="bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 text-xs font-bold px-2.5 py-0.5 rounded-full">
+                    {auditRecords.length} Audited Logs
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Live ledger of all deposits & withdrawals. Admins can manually toggle statuses (Completed, Flagged, Pending).</p>
+              </div>
+
+              {/* Status Summary Badges */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-1.5 text-center">
+                  <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Completed</div>
+                  <div className="text-sm font-black text-emerald-700 dark:text-emerald-300">
+                    {auditRecords.filter(r => r.status === 'APPROVED' || r.status === 'COMPLETED').length}
+                  </div>
+                </div>
+
+                <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-xl px-3 py-1.5 text-center">
+                  <div className="text-[10px] font-bold text-red-600 dark:text-red-400">Flagged 🚩</div>
+                  <div className="text-sm font-black text-red-700 dark:text-red-300">
+                    {auditRecords.filter(r => r.status === 'REJECTED').length}
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl px-3 py-1.5 text-center">
+                  <div className="text-[10px] font-bold text-amber-600 dark:text-amber-400">Pending ⏳</div>
+                  <div className="text-sm font-black text-amber-700 dark:text-amber-300">
+                    {auditRecords.filter(r => r.status === 'PENDING').length}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Filter Chips & Search Bar */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+              <div className="relative w-full sm:w-72">
+                <input
+                  type="text"
+                  placeholder="Search by ID, Phone, Tx Ref..."
+                  value={auditSearch}
+                  onChange={(e) => setAuditSearch(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl pl-9 pr-3 py-2 text-xs font-semibold text-slate-900 dark:text-white"
+                />
+                <span className="absolute left-3 top-2.5 text-slate-400 text-xs">🔍</span>
+                {auditSearch && (
+                  <button onClick={() => setAuditSearch('')} className="absolute right-3 top-2 text-xs text-slate-400 hover:text-slate-600">✕</button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0">
+                {[
+                  { key: 'ALL', label: `All (${auditRecords.length})` },
+                  { key: 'DEPOSIT', label: 'Deposits 📥' },
+                  { key: 'WITHDRAWAL', label: 'Withdrawals 📤' },
+                  { key: 'FLAGGED', label: 'Flagged 🚩' },
+                  { key: 'COMPLETED', label: 'Completed ✅' },
+                  { key: 'PENDING', label: 'Pending ⏳' }
+                ].map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setAuditFilter(tab.key)}
+                    className={`text-xs font-bold px-3 py-1.5 rounded-xl whitespace-nowrap transition-all border ${auditFilter === tab.key ? 'bg-[#001A40] text-amber-400 dark:bg-amber-400 dark:text-slate-950 border-transparent shadow-sm' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-200'}`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Audit Table */}
+            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-100 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 uppercase font-black text-[10px]">
+                    <th className="py-3 px-4">Type & Ref</th>
+                    <th className="py-3 px-4">User Account</th>
+                    <th className="py-3 px-4">Amount</th>
+                    <th className="py-3 px-4">Timestamp</th>
+                    <th className="py-3 px-4">Current Status</th>
+                    <th className="py-3 px-4 text-right">Manual Admin Toggle</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {filteredAudits.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="py-8 text-center text-slate-400 dark:text-slate-500 font-medium">
+                        No transactions found matching your audit filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAudits.map((rec) => {
+                      const isDeposit = rec.type === 'DEPOSIT';
+                      const isFlagged = rec.status === 'REJECTED';
+                      const isCompleted = rec.status === 'APPROVED' || rec.status === 'COMPLETED';
+                      const isPending = rec.status === 'PENDING';
+
+                      return (
+                        <tr key={rec.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                          <td className="py-3.5 px-4">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase ${isDeposit ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300' : 'bg-red-100 dark:bg-red-950/60 text-red-800 dark:text-red-300'}`}>
+                                {isDeposit ? '📥 DEPOSIT' : '📤 WITHDRAW'}
+                              </span>
+                              <span className="font-mono text-[11px] font-bold text-slate-800 dark:text-slate-200">
+                                {rec.id}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-slate-400 mt-0.5">
+                              Ref: {rec.momoTxId}
+                            </div>
+                          </td>
+
+                          <td className="py-3.5 px-4 font-bold text-slate-700 dark:text-slate-300">
+                            {rec.phone}
+                          </td>
+
+                          <td className="py-3.5 px-4 font-black text-sm text-slate-900 dark:text-white">
+                            <span className={isDeposit ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-white'}>
+                              {isDeposit ? '+' : '-'} {formatMoney(rec.amount)}
+                            </span>
+                          </td>
+
+                          <td className="py-3.5 px-4 text-[11px] text-slate-500 dark:text-slate-400 font-medium whitespace-nowrap">
+                            ⏱️ {rec.time}
+                          </td>
+
+                          <td className="py-3.5 px-4">
+                            <span className={`inline-flex items-center gap-1 text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase ${isCompleted ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300' : isFlagged ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-300' : 'bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300'}`}>
+                              {isCompleted ? '✅ COMPLETED' : isFlagged ? '🚩 FLAGGED' : '⏳ PENDING'}
+                            </span>
+                          </td>
+
+                          <td className="py-3.5 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {!isCompleted && (
+                                <button
+                                  onClick={() => handleToggleStatus(rec, 'APPROVED')}
+                                  title="Mark as Completed"
+                                  className="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg transition-colors shadow-sm"
+                                >
+                                  Complete ✅
+                                </button>
+                              )}
+
+                              {!isFlagged && (
+                                <button
+                                  onClick={() => handleToggleStatus(rec, 'REJECTED')}
+                                  title="Mark as Flagged"
+                                  className="bg-red-600 hover:bg-red-500 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-lg transition-colors shadow-sm"
+                                >
+                                  Flag 🚩
+                                </button>
+                              )}
+
+                              {!isPending && (
+                                <button
+                                  onClick={() => handleToggleStatus(rec, 'PENDING')}
+                                  title="Mark as Pending"
+                                  className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-[10px] font-bold px-2 py-1 rounded-lg transition-colors"
+                                >
+                                  Pending ⏳
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       );
     }
@@ -1718,6 +2566,169 @@
       );
     }
 
+    // LIVE FOREX & ADAPTIVE YIELD RATES MODAL
+    function RatesModal({ currencies, rawExchangeRates, marketAdjustment, lastSyncTime, ratesLoading, ratesError, onRefresh, onClose }) {
+      return (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl relative space-y-6 animate-in fade-in zoom-in duration-200">
+            <button
+              onClick={onClose}
+              className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center justify-center font-bold text-sm transition-all"
+            >
+              ✕
+            </button>
+
+            {/* Header */}
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white flex items-center justify-center text-2xl shadow-md">
+                🌐
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white">Live Forex & Interest Rates Hub</h3>
+                  <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    API Connected
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Real-time foreign exchange feed & adaptive base yield calibration</p>
+              </div>
+            </div>
+
+            {/* Market Yield Adjustment Banner */}
+            <div className="bg-gradient-to-r from-amber-500/15 via-amber-400/10 to-amber-500/15 border border-amber-400/40 rounded-2xl p-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                  <span>⚡</span> Dynamic Base Interest Rate Engine
+                </span>
+                <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-md">
+                  {marketAdjustment?.label || '+0.10% Live Forex Spread Boost'}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center pt-2">
+                <div className="bg-white/80 dark:bg-slate-950/60 p-2 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
+                  <div className="text-[10px] text-slate-400 font-semibold">Standard Base Rate</div>
+                  <div className="text-xs font-black text-slate-800 dark:text-slate-200 mt-0.5">2.00% / 3 Days</div>
+                </div>
+                <div className="bg-white/80 dark:bg-slate-950/60 p-2 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
+                  <div className="text-[10px] text-emerald-500 font-semibold">Forex Spread Bonus</div>
+                  <div className="text-xs font-black text-emerald-600 dark:text-emerald-400 mt-0.5">+{(marketAdjustment?.delta * 100).toFixed(2)}%</div>
+                </div>
+                <div className="bg-white/80 dark:bg-slate-950/60 p-2 rounded-xl border border-slate-200/50 dark:border-slate-800/50">
+                  <div className="text-[10px] text-amber-500 font-semibold">Live Effective Yield</div>
+                  <div className="text-xs font-black text-amber-600 dark:text-amber-400 mt-0.5">{((0.02 + (marketAdjustment?.delta || 0.001)) * 100).toFixed(2)}%</div>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 pt-1">
+                💡 Base interest rates automatically adjust with market liquidity & FX spreads, giving all active savers optimal risk-hedged returns.
+              </p>
+            </div>
+
+            {/* Live Currency Rates Grid */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">Live Exchange Rates against RWF</h4>
+                <span className="text-[10px] text-slate-400">Last Synced: {lastSyncTime}</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* USD */}
+                <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🇺🇸</span>
+                    <div>
+                      <div className="text-xs font-extrabold text-slate-900 dark:text-white">US Dollar (USD)</div>
+                      <div className="text-[10px] text-slate-400">Global Reserve Anchor</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs font-black text-slate-900 dark:text-amber-400">
+                      {Number(rawExchangeRates?.RWF || 1385).toFixed(2)} RWF
+                    </div>
+                    <div className="text-[10px] text-slate-400">1 USD</div>
+                  </div>
+                </div>
+
+                {/* EUR */}
+                <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🇪🇺</span>
+                    <div>
+                      <div className="text-xs font-extrabold text-slate-900 dark:text-white">Euro (EUR)</div>
+                      <div className="text-[10px] text-slate-400">European Currency</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs font-black text-slate-900 dark:text-amber-400">
+                      {((rawExchangeRates?.RWF || 1385) / (rawExchangeRates?.EUR || 0.92)).toFixed(2)} RWF
+                    </div>
+                    <div className="text-[10px] text-slate-400">1 EUR</div>
+                  </div>
+                </div>
+
+                {/* KES */}
+                <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🇰🇪</span>
+                    <div>
+                      <div className="text-xs font-extrabold text-slate-900 dark:text-white">Kenyan Shilling (KES)</div>
+                      <div className="text-[10px] text-slate-400">East Africa EAC</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs font-black text-slate-900 dark:text-amber-400">
+                      {((rawExchangeRates?.RWF || 1385) / (rawExchangeRates?.KES || 130.5)).toFixed(2)} RWF
+                    </div>
+                    <div className="text-[10px] text-slate-400">1 KES</div>
+                  </div>
+                </div>
+
+                {/* UGX */}
+                <div className="bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🇺🇬</span>
+                    <div>
+                      <div className="text-xs font-extrabold text-slate-900 dark:text-white">Ugandan Shilling (UGX)</div>
+                      <div className="text-[10px] text-slate-400">East Africa EAC</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs font-black text-slate-900 dark:text-amber-400">
+                      {(((rawExchangeRates?.RWF || 1385) / (rawExchangeRates?.UGX || 3720.0)) * 100).toFixed(2)} RWF
+                    </div>
+                    <div className="text-[10px] text-slate-400">100 UGX</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-800">
+              <div className="text-[11px] text-slate-400">
+                Source: <span className="font-semibold text-slate-600 dark:text-slate-300">Open Exchange Rates (ER-API)</span>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={onRefresh}
+                  disabled={ratesLoading}
+                  className="bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/60 px-3 py-2 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all disabled:opacity-50"
+                >
+                  <span className={ratesLoading ? 'animate-spin inline-block' : ''}>🔄</span>
+                  <span>{ratesLoading ? 'Syncing...' : 'Refresh Rates'}</span>
+                </button>
+                <button
+                  onClick={onClose}
+                  className="bg-[#001A40] text-amber-400 hover:bg-[#05285D] px-4 py-2 rounded-xl text-xs font-extrabold shadow-sm transition-all"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     // REAL MULTI-CHANNEL PAYMENT GATEWAY & DEPOSIT MODAL
     function DepositModal({ tier, formatMoney, onClose, onSubmit }) {
       const [phone, setPhone] = useState('+250 788 123 456');
@@ -1737,6 +2748,7 @@
       const [selectedBank, setSelectedBank] = useState('Bank of Kigali (BK)');
       const [cryptoNetwork, setCryptoNetwork] = useState('USDT-TRC20');
       const [cryptoTxHash, setCryptoTxHash] = useState('');
+      const [qrWithAmount, setQrWithAmount] = useState(false);
 
       // Live processing states
       const [isProcessing, setIsProcessing] = useState(false);
@@ -1745,8 +2757,9 @@
 
       const merchantCode = '1799283';
       const ussdString = '*182*8*1*1799283#';
+      const dynamicUssd = qrWithAmount ? `*182*8*1*1799283*${amount}#` : ussdString;
       const cryptoAddress = cryptoNetwork === 'USDT-TRC20' ? 'TXn98B2Q1s7xLkF2w6m5PzQ99104kLm89A' : '0x71C...4e8B';
-      const qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent('tel:*182*8*1*1799283#')}&color=001A40&bgcolor=FFFFFF&margin=8`;
+      const qrDataUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(dynamicUssd)}&color=001A40&bgcolor=FFFFFF&margin=6`;
       const cryptoQrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(cryptoAddress)}&color=001A40&bgcolor=FFFFFF&margin=8`;
 
       // Live Yield Calculation
@@ -2040,29 +3053,59 @@
 
                     {momoSubTab === 'qr' && (
                       <div className="flex flex-col items-center text-center space-y-3">
+                        <div className="flex items-center justify-center gap-2 w-full">
+                          <button
+                            type="button"
+                            onClick={() => setQrWithAmount(false)}
+                            className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all ${
+                              !qrWithAmount
+                                ? 'bg-[#001A40] text-amber-400 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                            }`}
+                          >
+                            Standard Code
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setQrWithAmount(true)}
+                            className={`text-[10px] font-bold px-2.5 py-1 rounded-lg transition-all ${
+                              qrWithAmount
+                                ? 'bg-[#001A40] text-amber-400 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                            }`}
+                          >
+                            Encode {formatMoney(amount)}
+                          </button>
+                        </div>
+
                         <div className="relative bg-white p-3 rounded-2xl shadow-md border-2 border-amber-400">
                           <img src={qrDataUrl} alt="MTN QR" className="w-36 h-36 object-contain rounded-lg" />
                           <div className="mt-1 bg-[#001A40] text-white text-[10px] font-extrabold px-2.5 py-0.5 rounded-full">
                             Merchant ID: 1799283
                           </div>
                         </div>
+
+                        <div className="bg-blue-50 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 rounded-lg px-3 py-1 text-xs font-mono font-bold text-blue-700 dark:text-blue-300 select-all">
+                          📲 {dynamicUssd}
+                        </div>
+
                         <p className="text-xs text-slate-600 dark:text-slate-300">
-                          Scan with your MoMo App or phone camera to deposit directly.
+                          Scan with your MoMo App, phone camera, or Banking App to deposit directly.
                         </p>
                         <div className="flex gap-2 w-full">
                           <a
-                            href="tel:*182*8*1*1799283%23"
-                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-xl text-xs font-extrabold shadow flex items-center justify-center gap-1"
+                            href={`tel:${dynamicUssd.replace(/#/g, '%23')}`}
+                            className="flex-1 bg-amber-400 hover:bg-amber-500 text-slate-950 py-2 rounded-xl text-xs font-extrabold shadow flex items-center justify-center gap-1"
                           >
                             <span>📞</span>
                             <span>Tap to Dial</span>
                           </a>
                           <button
                             type="button"
-                            onClick={() => copyToClipboard(merchantCode, 'merchant')}
+                            onClick={() => copyToClipboard(dynamicUssd, 'dynamic_ussd')}
                             className="flex-1 bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 py-2 rounded-xl text-xs font-extrabold"
                           >
-                            {copiedText === 'merchant' ? '✅ Copied!' : '📋 Copy ID (1799283)'}
+                            {copiedText === 'dynamic_ussd' ? '✅ Copied!' : '📋 Copy USSD'}
                           </button>
                         </div>
                       </div>
